@@ -1,0 +1,38 @@
+# --- PII / private data: NEVER commit (public repo, see AGENTS.md §1) ---
+*.xlsx
+*.xls
+*.csv
+data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+.env
+.env.*
+!.env.example
+.pii-denylist
+
+# --- Dependencies & build output ---
+node_modules/
+.svelte-kit/
+build/
+.output/
+.vercel/
+.netlify/
+.wrangler/
+dev-dist/
+
+# --- Tests ---
+coverage/
+test-results/
+playwright-report/
+blob-report/
+.vitest-attachments/
+__screenshots__/
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+*.log
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*

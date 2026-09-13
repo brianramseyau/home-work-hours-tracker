@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" color="#1D2640">
+	<!--
+		Master logo mark: a desk lamp lighting a clock face (see foundational/DESIGN.md → Branding).
+		Ink parts use currentColor so the inline mark follows the theme; the clock hands stay ink
+		because they always sit on the lamp-amber face. scripts/generate-icons.mjs pins the colour
+		for PNG output.
+	-->
+	<defs>
+		<linearGradient id="hwht-cone" x1="31" y1="24" x2="46" y2="48" gradientUnits="userSpaceOnUse">
+			<stop offset="0" stop-color="#F2A93B" stop-opacity="0.75" />
+			<stop offset="1" stop-color="#F2A93B" stop-opacity="0.12" />
+		</linearGradient>
+	</defs>
+	<path d="M28.5 29.2 L40.5 22.2 L59 37 L31 55 Z" fill="url(#hwht-cone)" />
+	<circle cx="46" cy="45" r="11" fill="#F2A93B" stroke="currentColor" stroke-width="3" />
+	<path d="M46 45 V37.5 M46 45 H39.5" stroke="#1D2640" stroke-width="2.6" stroke-linecap="round" />
+	<rect x="6" y="54" width="20" height="4.5" rx="2.25" fill="currentColor" />
+	<path d="M16 54 L12 36 L28 18.5" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" />
+	<circle cx="12" cy="36" r="2.6" fill="currentColor" />
+	<path d="M26.2 20.3 L32.9 15.6 L41.4 22.9 L28.4 30.4 Z" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
+</svg>

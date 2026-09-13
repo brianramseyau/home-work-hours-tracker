@@ -1,0 +1,206 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn-svelte/tailwind.css';
+@import '@fontsource-variable/public-sans';
+/* opsz + wght axes; the browser sets optical size from font-size (font-optical-sizing: auto). */
+@import '@fontsource-variable/bricolage-grotesque/opsz.css';
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * "Desk lamp" design tokens: see foundational/DESIGN.md.
+ * Lamp-amber is reserved for Home hours and the logo glow. Never use it for generic UI.
+ * Status is never colour alone: pair every swatch with a pattern-* utility below.
+ */
+:root {
+	/* Brand palette */
+	--paper: #f4f6fa;
+	--ink: #1d2640;
+	--lamp: #f2a93b;
+	--lamp-soft: #fcebcf;
+	--lamp-foreground: #1d2640;
+	--slate: #8193b2;
+	--heather: #a98bd1;
+	--rosehip: #d9727e;
+	--gum: #7fa88a;
+
+	/* shadcn-svelte semantic tokens */
+	--background: var(--paper);
+	--foreground: var(--ink);
+	--card: #ffffff;
+	--card-foreground: var(--ink);
+	--popover: #ffffff;
+	--popover-foreground: var(--ink);
+	--primary: var(--ink);
+	--primary-foreground: #f4f6fa;
+	--secondary: #e6eaf2;
+	--secondary-foreground: var(--ink);
+	--muted: #e9edf4;
+	--muted-foreground: #5a6480;
+	--accent: #e3e8f1;
+	--accent-foreground: var(--ink);
+	--destructive: #b4323f;
+	--border: #d5dbe7;
+	--input: #c9d0de;
+	--ring: #3a4a78;
+	--chart-1: var(--lamp);
+	--chart-2: var(--slate);
+	--chart-3: var(--heather);
+	--chart-4: var(--rosehip);
+	--chart-5: var(--gum);
+	--radius: 0.5rem;
+	--sidebar: #ffffff;
+	--sidebar-foreground: var(--ink);
+	--sidebar-primary: var(--ink);
+	--sidebar-primary-foreground: #f4f6fa;
+	--sidebar-accent: #e3e8f1;
+	--sidebar-accent-foreground: var(--ink);
+	--sidebar-border: #d5dbe7;
+	--sidebar-ring: #3a4a78;
+}
+
+.dark {
+	--paper: #141a2b;
+	--ink: #e6eaf2;
+	--lamp-soft: #3b2f1b;
+	--slate: #6f82a6;
+	--heather: #9c7fc6;
+	--rosehip: #cc6572;
+	--gum: #6e9a7a;
+
+	--card: #1c2438;
+	--popover: #1c2438;
+	--primary-foreground: #141a2b;
+	--secondary: #253050;
+	--muted: #222b42;
+	--muted-foreground: #9aa5bf;
+	--accent: #253050;
+	--destructive: #e0707b;
+	--border: #2c3752;
+	--input: #34405e;
+	--ring: #9aa5bf;
+	--sidebar: #1a2133;
+	--sidebar-primary-foreground: #141a2b;
+	--sidebar-accent: #253050;
+	--sidebar-border: #2c3752;
+	--sidebar-ring: #9aa5bf;
+}
+
+@theme inline {
+	--font-sans: 'Public Sans Variable', ui-sans-serif, system-ui, sans-serif;
+	--font-display: 'Bricolage Grotesque Variable', 'Public Sans Variable', ui-sans-serif, sans-serif;
+	--color-paper: var(--paper);
+	--color-ink: var(--ink);
+	--color-lamp: var(--lamp);
+	--color-lamp-soft: var(--lamp-soft);
+	--color-lamp-foreground: var(--lamp-foreground);
+	--color-slate: var(--slate);
+	--color-heather: var(--heather);
+	--color-rosehip: var(--rosehip);
+	--color-gum: var(--gum);
+	--color-sidebar-ring: var(--sidebar-ring);
+	--color-sidebar-border: var(--sidebar-border);
+	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+	--color-sidebar-accent: var(--sidebar-accent);
+	--color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+	--color-sidebar-primary: var(--sidebar-primary);
+	--color-sidebar-foreground: var(--sidebar-foreground);
+	--color-sidebar: var(--sidebar);
+	--color-chart-5: var(--chart-5);
+	--color-chart-4: var(--chart-4);
+	--color-chart-3: var(--chart-3);
+	--color-chart-2: var(--chart-2);
+	--color-chart-1: var(--chart-1);
+	--color-ring: var(--ring);
+	--color-input: var(--input);
+	--color-border: var(--border);
+	--color-destructive: var(--destructive);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-accent: var(--accent);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-muted: var(--muted);
+	--color-secondary-foreground: var(--secondary-foreground);
+	--color-secondary: var(--secondary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-primary: var(--primary);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-popover: var(--popover);
+	--color-card-foreground: var(--card-foreground);
+	--color-card: var(--card);
+	--color-foreground: var(--foreground);
+	--color-background: var(--background);
+	--radius-sm: calc(var(--radius) * 0.6);
+	--radius-md: calc(var(--radius) * 0.8);
+	--radius-lg: var(--radius);
+	--radius-xl: calc(var(--radius) * 1.4);
+	--radius-2xl: calc(var(--radius) * 2);
+	--radius-3xl: calc(var(--radius) * 2.4);
+	--radius-4xl: calc(var(--radius) * 2.8);
+}
+
+/* Day-type patterns. Set --swatch (e.g. style="--swatch: var(--lamp)") on the element. */
+@utility pattern-solid {
+	background-color: var(--swatch, currentColor);
+}
+@utility pattern-outline {
+	box-shadow: inset 0 0 0 2px var(--swatch, currentColor);
+}
+@utility pattern-hatch {
+	background-image: repeating-linear-gradient(
+		135deg,
+		var(--swatch, currentColor) 0 2px,
+		transparent 2px 5px
+	);
+}
+@utility pattern-dots {
+	background-image: radial-gradient(var(--swatch, currentColor) 1.2px, transparent 1.5px);
+	background-size: 5px 5px;
+}
+@utility pattern-ring {
+	background-image: radial-gradient(
+		circle,
+		transparent 34%,
+		var(--swatch, currentColor) 36% 56%,
+		transparent 58%
+	);
+}
+@utility pattern-split {
+	background-image: linear-gradient(135deg, var(--lamp) 0 50%, transparent 50%);
+	box-shadow: inset 0 0 0 2px var(--slate);
+}
+@utility tabular {
+	font-variant-numeric: tabular-nums;
+}
+
+@layer base {
+	* {
+		@apply border-border outline-ring/50;
+	}
+	html {
+		@apply font-sans;
+	}
+	body {
+		@apply bg-background text-foreground antialiased;
+		line-height: 1.5;
+	}
+	h1,
+	h2,
+	h3 {
+		font-family: var(--font-display);
+		line-height: 1.15;
+		letter-spacing: -0.01em;
+	}
+	[data-numeric] {
+		font-variant-numeric: tabular-nums;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		*,
+		*::before,
+		*::after {
+			animation-duration: 0.01ms !important;
+			animation-iteration-count: 1 !important;
+			transition-duration: 0.01ms !important;
+			scroll-behavior: auto !important;
+		}
+	}
+}
