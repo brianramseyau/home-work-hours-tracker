@@ -162,7 +162,7 @@ Standard-hours changes call `replanFrom(current FY start)`. Only `prefill` rows 
 - **PR #2's second Kilo review round** (after the fixes above), also fixed:
   - `OfficeRow`/`YearRow` re-showed a stale error (or closed the form on a stale success) if the
     editor was reopened without a fresh submit — `page.form` doesn't clear itself. Both now
-    snapshot `page.form` when the editor opens (`openedWithForm`) and only treat a *different*
+    snapshot `page.form` when the editor opens (`openedWithForm`) and only treat a _different_
     `page.form` reference as this attempt's own outcome, which also naturally covers switching
     tabs away and back without resubmitting.
   - `ScheduleEditor`'s `offices[0].id` (used only when a day is set to office mode) had no
@@ -171,7 +171,7 @@ Standard-hours changes call `replanFrom(current FY start)`. Only `prefill` rows 
     Playwright `force: true` click still doesn't fire a native `disabled` button's click handler
     in Chromium, so the fallback branch has no way to be exercised through the UI) and added the
     real enforcement layer Kilo also suggested: `scheduleSchema` now rejects `{ mode: 'office',
-    officeId: null }` outright, closing the "crafted POST" gap regardless of any client guard.
+officeId: null }` outright, closing the "crafted POST" gap regardless of any client guard.
   - `updateRate` guarded a finalised year but not a non-existent `startYear` (any 2000–2100 value
     passes `yearSchema`); `getYear` returning nothing now fails the action instead of a
     `WHERE`-matches-nothing silent "success".
