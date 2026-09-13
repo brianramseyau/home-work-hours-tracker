@@ -159,3 +159,31 @@ Standard-hours changes call `replanFrom(current FY start)`. Only `prefill` rows 
     survives viewing another (the regression test for the critical fix above), and the E2E
     schedule-save assertion is now scoped to the saved-versions list instead of matching text that
     the always-visible editor also carries (which could pass even if nothing had actually saved).
+- **PR #2's second Kilo review round** (after the fixes above), also fixed:
+  - `OfficeRow`/`YearRow` re-showed a stale error (or closed the form on a stale success) if the
+    editor was reopened without a fresh submit — `page.form` doesn't clear itself. Both now
+    snapshot `page.form` when the editor opens (`openedWithForm`) and only treat a *different*
+    `page.form` reference as this attempt's own outcome, which also naturally covers switching
+    tabs away and back without resubmitting.
+  - `ScheduleEditor`'s `offices[0].id` (used only when a day is set to office mode) had no
+    fallback, relying solely on the "Office" toggle being disabled. Restored
+    `offices[0]?.id ?? null` with a `/* v8 ignore next */` (confirmed empirically that a
+    Playwright `force: true` click still doesn't fire a native `disabled` button's click handler
+    in Chromium, so the fallback branch has no way to be exercised through the UI) and added the
+    real enforcement layer Kilo also suggested: `scheduleSchema` now rejects `{ mode: 'office',
+    officeId: null }` outright, closing the "crafted POST" gap regardless of any client guard.
+  - `updateRate` guarded a finalised year but not a non-existent `startYear` (any 2000–2100 value
+    passes `yearSchema`); `getYear` returning nothing now fails the action instead of a
+    `WHERE`-matches-nothing silent "success".
+  - Three test-quality fixes: the cycle-length deselect-guard test asserted `getByText('Week A')`
+    absence, which can't distinguish the fix from the bug (`''` and `'1'` are both `!== '2'`) —
+    now checks the actual submitted hidden field. The cross-FY holiday test's final assertion
+    re-loaded FY27, which would re-seed (and so re-insert) the very row being checked regardless
+    of the bug — now reads the DB directly after the FY28 load, with no third load. And the
+    `YearRow`/`OfficeRow` "ignores a result for a different row" tests asserted synchronously,
+    before Svelte's `$effect` (which would wrongly close the form on a scoping regression) gets a
+    chance to flush — now awaited, matching the sibling success/failure tests.
+  - Kilo's second-pass run itself failed once first, with "Agent wrapper made no execution
+    progress during the watchdog window" and zero new comments — an infrastructure timeout on
+    its side, confirmed via the check run's own output text, not a review verdict. Retriggered
+    with an empty commit rather than treated as a real finding.

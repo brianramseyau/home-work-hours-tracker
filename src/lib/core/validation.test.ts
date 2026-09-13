@@ -122,8 +122,26 @@ describe('scheduleSchema', () => {
 			...valid,
 			days: [
 				{ weekIndex: 0, weekday: 1, mode: 'home', officeId: null },
-				{ weekIndex: 1, weekday: 1, mode: 'office', officeId: null }
+				{ weekIndex: 1, weekday: 1, mode: 'office', officeId: 1 }
 			]
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects an office day with no office', () => {
+		// Guards a crafted request bypassing the schedule editor's own UI, which disables the
+		// "Office" toggle whenever there are no offices to pick from.
+		const result = scheduleSchema.safeParse({
+			...valid,
+			days: [{ weekIndex: 0, weekday: 1, mode: 'office', officeId: null }]
+		});
+		expect(result.success).toBe(false);
+	});
+
+	it('accepts an office day with an office', () => {
+		const result = scheduleSchema.safeParse({
+			...valid,
+			days: [{ weekIndex: 0, weekday: 1, mode: 'office', officeId: 1 }]
 		});
 		expect(result.success).toBe(true);
 	});

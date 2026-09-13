@@ -75,7 +75,24 @@ describe('OfficeRow', () => {
 		await expect
 			.element(page.getByRole('alert'))
 			.toHaveTextContent('An office already has this name.');
-		expect(page.getByLabelText('Name').elements()).toHaveLength(1);
+		await expect.element(page.getByLabelText('Name')).toBeInTheDocument();
+	});
+
+	it('does not show a stale error left over from a previous edit when reopening', async () => {
+		render(OfficeRow, { office });
+		await page.getByRole('button', { name: 'Rename' }).click();
+		setPageForm({
+			form: 'officeUpdate',
+			id: office.id,
+			errors: { name: ['An office already has this name.'] }
+		});
+		await expect.element(page.getByRole('alert')).toBeInTheDocument();
+
+		await page.getByRole('button', { name: 'Cancel' }).click();
+		await page.getByRole('button', { name: 'Rename' }).click();
+		// page.form still carries the old failure, but reopening re-snapshots it as "already
+		// seen", so it shouldn't render again as this fresh attempt's own outcome.
+		expect(page.getByRole('alert').elements()).toHaveLength(0);
 	});
 
 	it('ignores a save result for a different office', async () => {
@@ -83,6 +100,9 @@ describe('OfficeRow', () => {
 		await page.getByRole('button', { name: 'Rename' }).click();
 
 		setPageForm({ form: 'officeUpdate', id: office.id + 1, success: true });
-		expect(page.getByLabelText('Name').elements()).toHaveLength(1);
+		// Awaited, not a synchronous `.elements()` check: the effect that would close the form
+		// on a scoping regression runs on Svelte's next flush, not synchronously with the state
+		// write above, so an unawaited check here would pass even if the id scoping were broken.
+		await expect.element(page.getByLabelText('Name')).toBeInTheDocument();
 	});
 });

@@ -83,7 +83,24 @@ describe('YearRow', () => {
 		await expect
 			.element(page.getByRole('alert'))
 			.toHaveTextContent('Unfinalise this year before changing its rate.');
-		expect(page.getByLabelText('Rate ($/hr)').elements()).toHaveLength(1);
+		await expect.element(page.getByLabelText('Rate ($/hr)')).toBeInTheDocument();
+	});
+
+	it('does not show a stale error left over from a previous edit when reopening', async () => {
+		render(YearRow, { year: baseYear });
+		await page.getByRole('button', { name: 'Edit rate' }).click();
+		setPageForm({
+			form: 'updateRate',
+			startYear: baseYear.startYear,
+			errors: { startYear: ['Unfinalise this year before changing its rate.'] }
+		});
+		await expect.element(page.getByRole('alert')).toBeInTheDocument();
+
+		await page.getByRole('button', { name: 'Cancel' }).click();
+		await page.getByRole('button', { name: 'Edit rate' }).click();
+		// page.form still carries the old failure, but reopening re-snapshots it as "already
+		// seen", so it shouldn't render again as this fresh attempt's own outcome.
+		expect(page.getByRole('alert').elements()).toHaveLength(0);
 	});
 
 	it('ignores a save result for a different year', async () => {
@@ -91,7 +108,11 @@ describe('YearRow', () => {
 		await page.getByRole('button', { name: 'Edit rate' }).click();
 
 		setPageForm({ form: 'updateRate', startYear: baseYear.startYear + 1, success: true });
-		expect(page.getByLabelText('Rate ($/hr)').elements()).toHaveLength(1);
+		// Awaited, not a synchronous `.elements()` check: the effect that would close the form
+		// on a scoping regression runs on Svelte's next flush, not synchronously with the state
+		// write above, so an unawaited check here would pass even if the id/startYear scoping
+		// were broken.
+		await expect.element(page.getByLabelText('Rate ($/hr)')).toBeInTheDocument();
 	});
 
 	it('offers to finalise an open year, and to unfinalise a finalised one', async () => {

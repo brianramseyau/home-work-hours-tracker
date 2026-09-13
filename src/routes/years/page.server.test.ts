@@ -159,6 +159,17 @@ describe('actions.updateRate', () => {
 		expect(getYear(db, 2026)?.rateCentsPerHour).toBe(70);
 	});
 
+	it('fails to update the rate of a year that does not exist', async () => {
+		const { actions } = await import('./+page.server');
+		const result = await actions.updateRate(
+			actionEvent({ startYear: '2099', rateDollars: '0.75', rateNote: '' })
+		);
+		expect(result).toMatchObject({ status: 400 });
+
+		const { listYears } = await import('$lib/server/repo/years');
+		expect(listYears(db)).toEqual([]);
+	});
+
 	it('refuses to change the rate of a finalised year', async () => {
 		const { finaliseYear } = await import('$lib/server/repo/years');
 		createYear(db, { startYear: 2026, rateCentsPerHour: 70 });

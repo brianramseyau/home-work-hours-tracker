@@ -42,8 +42,11 @@ describe('ScheduleEditor', () => {
 		render(ScheduleEditor, { offices, includeWeekends: false, today: '2026-09-14' });
 		const everyWeekToggle = page.getByRole('radio', { name: 'Every week' });
 		await everyWeekToggle.click(); // already active; bits-ui reports this as a deselect
-		// The cycle is still "every week": no second week row appears.
-		expect(page.getByText('Week A', { exact: true }).elements()).toHaveLength(0);
+		// cycleWeeks is still '1' — checked on the hidden field that's actually submitted,
+		// since `getByText('Week A')` being absent can't tell the guard apart from the bug it
+		// guards against (both '' and '1' are !== '2').
+		const cycleWeeksInput = document.querySelector('input[name="cycleWeeks"]') as HTMLInputElement;
+		expect(cycleWeeksInput.value).toBe('1');
 	});
 
 	it('shows an office picker once a day is set to office, defaulting to the first office', async () => {

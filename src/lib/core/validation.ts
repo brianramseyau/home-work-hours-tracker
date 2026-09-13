@@ -62,12 +62,17 @@ export const officeSchema = z.object({
 	address: z.string().trim().min(1).nullable()
 });
 
-const scheduleDaySchema = z.object({
-	weekIndex: z.number().int().min(0).max(1),
-	weekday: z.number().int().min(1).max(7),
-	mode: z.enum(['home', 'office', 'off']),
-	officeId: z.number().int().nullable()
-});
+const scheduleDaySchema = z
+	.object({
+		weekIndex: z.number().int().min(0).max(1),
+		weekday: z.number().int().min(1).max(7),
+		mode: z.enum(['home', 'office', 'off']),
+		officeId: z.number().int().nullable()
+	})
+	.refine((day) => day.mode !== 'office' || day.officeId !== null, {
+		message: 'An office day needs an office',
+		path: ['officeId']
+	});
 
 export const scheduleSchema = z
 	.object({

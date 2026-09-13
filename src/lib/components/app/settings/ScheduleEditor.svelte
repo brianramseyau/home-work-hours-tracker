@@ -62,10 +62,15 @@
 		// Only reached from a non-office mode (re-selecting an already-active toggle item is a
 		// no-op), so the cell's own officeId is always null already — default to the first
 		// office instead of carrying anything forward. The "Office" toggle is disabled whenever
-		// there are no offices, so offices[0] always exists here.
+		// there are no offices, so offices[0] exists on every real click; the fallback below is
+		// belt-and-suspenders for a disabled native button somehow still firing (can't be
+		// exercised through Playwright — a real `disabled` button doesn't dispatch a click event
+		// even with `force: true`, confirmed empirically). `scheduleSchema` is the actual
+		// enforcement against a crafted request that skips the UI entirely.
 		cells[cellKey(weekIndex, weekday)] = {
 			mode,
-			officeId: mode === 'office' ? offices[0].id : null
+			/* v8 ignore next */
+			officeId: mode === 'office' ? (offices[0]?.id ?? null) : null
 		};
 	}
 

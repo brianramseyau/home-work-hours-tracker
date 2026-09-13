@@ -23,6 +23,15 @@
 
 	let editing = $state(false);
 	let finaliseDialogOpen = $state(false);
+	// Snapshots page.form when this row's editor is (re)opened, so a result left over from a
+	// previous edit on this same row — or from switching tabs away and back — doesn't render as
+	// this fresh attempt's own outcome until page.form actually changes again.
+	let openedWithForm = $state<unknown>(null);
+
+	function startEditing() {
+		openedWithForm = page.form;
+		editing = true;
+	}
 
 	function formatDollars(cents: number): string {
 		return `$${(cents / 100).toFixed(2)}`;
@@ -37,7 +46,12 @@
 			success?: boolean;
 			errors?: Record<string, string[] | undefined>;
 		} | null;
-		return form && form.form === 'updateRate' && form.startYear === year.startYear ? form : null;
+		return form &&
+			form.form === 'updateRate' &&
+			form.startYear === year.startYear &&
+			form !== openedWithForm
+			? form
+			: null;
 	});
 	const error = $derived(result ? firstFieldError(result.errors) : null);
 
@@ -114,7 +128,7 @@
 		</form>
 	{:else}
 		<div class="flex flex-wrap gap-2">
-			<Button variant="outline" size="sm" onclick={() => (editing = true)}>Edit rate</Button>
+			<Button variant="outline" size="sm" onclick={startEditing}>Edit rate</Button>
 			<Dialog.Root bind:open={finaliseDialogOpen}>
 				<Dialog.Trigger>
 					{#snippet child({ props })}

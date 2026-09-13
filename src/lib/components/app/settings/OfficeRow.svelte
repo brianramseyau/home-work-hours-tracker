@@ -17,6 +17,15 @@
 	let { office }: { office: OfficeData } = $props();
 
 	let editing = $state(false);
+	// Snapshots page.form when this row's editor is (re)opened, so a result left over from a
+	// previous edit on this same row — or from switching tabs away and back — doesn't render as
+	// this fresh attempt's own outcome until page.form actually changes again.
+	let openedWithForm = $state<unknown>(null);
+
+	function startEditing() {
+		openedWithForm = page.form;
+		editing = true;
+	}
 
 	// This row's own outcome from `?/officeUpdate`, scoped by id since `page.form` is shared by
 	// every OfficeRow on the page.
@@ -27,7 +36,9 @@
 			success?: boolean;
 			errors?: Record<string, string[] | undefined>;
 		} | null;
-		return form && form.form === 'officeUpdate' && form.id === office.id ? form : null;
+		return form && form.form === 'officeUpdate' && form.id === office.id && form !== openedWithForm
+			? form
+			: null;
 	});
 	const error = $derived(result ? firstFieldError(result.errors) : null);
 
@@ -78,7 +89,7 @@
 				{/if}
 			</div>
 			<div class="flex gap-2">
-				<Button variant="outline" size="sm" onclick={() => (editing = true)}>Rename</Button>
+				<Button variant="outline" size="sm" onclick={startEditing}>Rename</Button>
 				{#if office.archivedAt}
 					<form method="POST" action="?/officeUnarchive" use:enhance>
 						<input type="hidden" name="id" value={office.id} />

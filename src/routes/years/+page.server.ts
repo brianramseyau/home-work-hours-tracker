@@ -91,7 +91,14 @@ export const actions: Actions = {
 		}
 
 		const year = getYear(db, parsed.data.startYear);
-		if (year?.finalisedAt) {
+		if (!year) {
+			return fail(400, {
+				form: 'updateRate',
+				startYear,
+				errors: { startYear: ['This financial year does not exist.'] }
+			});
+		}
+		if (year.finalisedAt) {
 			return fail(400, {
 				form: 'updateRate',
 				startYear,

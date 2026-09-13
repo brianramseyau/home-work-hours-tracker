@@ -120,8 +120,13 @@ describe('load', () => {
 		asData(load(actionEvent()));
 		asData(load(actionEvent({}, 'http://localhost/settings?fy=fy28')));
 
-		const fy27Again = asData(load(actionEvent()));
-		expect(fy27Again.holidays.some((h) => h.name === 'Melbourne Cup')).toBe(true);
+		// Checked directly against the DB, not via a third `load()` — a load for FY27 would
+		// re-seed (and so re-insert) FY27's own bundled rows regardless of whether the FY28
+		// load wrongly wiped them, masking the regression this test exists to catch.
+		const rows = listHolidays(db, 'AU-VIC').filter((row) => row.source === 'bundled');
+		expect(rows.some((row) => row.name === 'Melbourne Cup' && row.date === '2026-11-03')).toBe(
+			true
+		);
 	});
 
 	it('keeps a bundled holiday disabled across a reseed on the next load', async () => {
