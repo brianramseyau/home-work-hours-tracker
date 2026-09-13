@@ -19,6 +19,13 @@ export interface ClockEnv {
 	TZ?: string;
 	/** Pins "today" (YYYY-MM-DD) for deterministic E2E runs. Never set in production. */
 	APP_FIXED_DATE?: string;
+	// SvelteKit's $env/dynamic/private ambient type is generated from whichever env vars are
+	// literally present when `svelte-kit sync` runs, so it won't always include TZ/APP_FIXED_DATE
+	// by name (e.g. no local .env in CI). Without an index signature here, TypeScript's "weak
+	// type" check (all-optional properties, no name in common) rejects passing that env object
+	// in, even though it's structurally compatible. The index signature fixes that for good,
+	// rather than by accident of which vars happen to exist at sync time.
+	[key: string]: string | undefined;
 }
 
 /** Today's local date as YYYY-MM-DD. */

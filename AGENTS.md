@@ -71,6 +71,7 @@ Migrations apply automatically on server boot (`src/hooks.server.ts` imports `$l
 - Store **integer minutes** and **integer cents**. The claim is `round(totalMinutes × rateCents / 60)`, rounded once, at the end.
 - Standard hours default to 09:00–17:06 less 30 min = **7.6 h**.
 - **Never** derive a local date with `toISOString().slice(0, 10)`, which gives the UTC day. Use `clock.today()` on the server and pass it to the client.
+- **`$env/dynamic/*` types are environment-dependent — always accept them via an indexed interface.** SvelteKit generates that ambient type from whichever vars are literally present when `svelte-kit sync` runs, so a plain `{ FOO?: string }` param type can pass locally (where `.env` sets `FOO`) and fail `svelte-check` in CI (no `.env` there) via TS's "weak type" check. Any interface a `$env/dynamic/*` value is passed into needs `[key: string]: string | undefined;` (see `ClockEnv` in `clock.ts`). When touching such code, sanity-check by temporarily renaming `.env` and re-running `npm run check`.
 - Auto-prefill only ever creates or changes rows with `source = 'prefill'`. `manual` and `import` rows are sacred. Finalised FYs are frozen.
 - The FY is 1 Jul → 30 Jun. The label `FY27` means the year ending June 2027. The week number starts at 1 on 1 Jul and goes up every Monday.
 
