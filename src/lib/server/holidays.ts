@@ -35,9 +35,9 @@ export interface HolidayRow {
 	disabled: boolean;
 }
 
-// `yearSchema` allows a financial year up to startYear 2100, whose Jan–Jun half falls in
-// calendar year 2100 — a century year that the `% 4` rule alone gets wrong (2100 isn't a leap
-// year), so the century exception matters within the app's own declared range.
+// `yearSchema` allows startYear 2099, whose Jan–Jun half falls in calendar year 2100 — a century
+// year the `% 4` rule alone gets wrong (2100 isn't a leap year), so the century exception
+// matters within the app's own declared range.
 function isLeapYear(year: number): boolean {
 	return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
 }
