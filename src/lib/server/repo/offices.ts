@@ -35,3 +35,7 @@ export function updateOffice(
 export function archiveOffice(db: Db, id: number, archivedAt: string): Office {
 	return db.update(offices).set({ archivedAt }).where(eq(offices.id, id)).returning().get();
 }
+
+export function unarchiveOffice(db: Db, id: number): Office {
+	return db.update(offices).set({ archivedAt: null }).where(eq(offices.id, id)).returning().get();
+}
