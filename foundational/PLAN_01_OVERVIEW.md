@@ -198,5 +198,10 @@ Phases 03, 05 and 06 can run as parallel agents once 02 has merged. Every phase 
 
 ## Open items
 
-- Which AU-VIC regional days `date-holidays` covers (e.g. Melbourne Cup, AFL Grand Final Friday); anything missing gets documented as needing a custom holiday (P02).
 - The logo motif and final colour contrast values get validated with screenshots (P01/P07).
+
+## Resolved items
+
+- **AU-VIC regional holidays (P02):** `date-holidays` covers both Melbourne Cup and AFL Grand
+  Final Friday as `type: 'public'` rows, so no custom holiday is needed for AU-VIC by default.
+  See PLAN_01_PHASE_02's "Holiday coverage findings".

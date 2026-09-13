@@ -75,6 +75,40 @@ Each module has a co-located `*.test.ts` and uses **no DB, no Date-now, no env**
 
 ## Acceptance criteria
 
-- [ ] The migration applies cleanly on an empty db and on the P01 db.
-- [ ] 100% coverage. `verify` is green.
-- [ ] The holiday coverage findings are recorded in this doc.
+- [x] The migration applies cleanly on an empty db and on the P01 db.
+- [x] 100% coverage. `verify` is green.
+- [x] The holiday coverage findings are recorded in this doc.
+
+## Holiday coverage findings (AU-VIC)
+
+`date-holidays` (country `AU`, state `VIC`) covers both regional days the plan flagged as
+possibly missing, as `type === 'public'` rows: **Melbourne Cup** (first Tuesday of November) and
+**AFL Grand Final Friday** (the Friday before the AFL Grand Final). Both showed up correctly for
+FY26 and FY27 in `bundledHolidays('AU-VIC', …)`. No custom holiday is needed for AU-VIC out of
+the box; the custom-holiday escape hatch (`server/repo/holidays.ts`'s `addCustomHoliday`) remains
+available for anything a future year's package update drops, or for other states' quirks.
+
+## Notes and deviations (as built)
+
+- **`planPrefill`'s `includeWeekends` is a belt-and-braces guard, not the only gate.** A weekend
+  date is skipped outright when the setting is off, regardless of what the schedule contains.
+  This means weekend prefill rows can only ever come from a schedule that both has an explicit
+  non-`off` entry for Sat/Sun _and_ is planned while `includeWeekends` is on — consistent with
+  Phase 03's schedule editor only exposing weekend cells once the setting is on.
+- **`autoPrefill.ts` plans one financial year at a time.** A single `ensurePrefilled`/`replanFrom`
+  call can straddle a FY boundary (e.g. the watermark sits in June and `today` is in July); the
+  range is split at each 1 Jul crossing so a finalised year can be skipped without also blocking
+  the new year's fill. The watermark still advances to `today` even when every segment it covers
+  is finalised, so a frozen year is never retried on every subsequent boot.
+- **Coverage exclusion added:** `src/lib/server/db/schema.ts` (see `vite.config.ts` and AGENTS.md
+  §5). Its `.references(() => …)` foreign-key thunks are only ever invoked by drizzle-kit when
+  generating DDL, never by the app itself (migrations are pre-built `.sql` files applied verbatim
+  by `migrate()`), so they're structurally unreachable from any test that doesn't shell out to
+  `drizzle-kit generate`. The migration they produce is still exercised for real by
+  `create.test.ts`, which applies it against `:memory:` and checks `foreign_key_check`.
+- **`repo/schedules.ts`'s `listSchedules` always returns rows ordered by `effectiveFrom`
+  ascending.** `autoPrefill.ts`'s `startOfPlanning` relies on this (`schedules[0]` is the
+  earliest) rather than re-deriving a minimum, since `.reduce` over an already-sorted array can
+  only ever take its first branch — a redundant "find the minimum" would have been dead code
+  behind an unreachable comparison, the same class of issue as the `pop() ?? lower` fix in P01's
+  PII scanner.

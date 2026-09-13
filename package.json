@@ -77,7 +77,9 @@
 		"vitest-browser-svelte": "^2.1.1"
 	},
 	"dependencies": {
-		"better-sqlite3": "^13.0.2"
+		"better-sqlite3": "^13.0.2",
+		"date-holidays": "^3.24.4",
+		"zod": "^4.1.13"
 	},
 	"license": "MIT"
 }
