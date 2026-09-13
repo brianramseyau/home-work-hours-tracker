@@ -78,6 +78,139 @@ Standard-hours changes call `replanFrom(current FY start)`. Only `prefill` rows 
 
 ## Acceptance criteria
 
-- [ ] 100% coverage. `verify` is green.
-- [ ] Screenshots of every tab at 390px and 1440px, light and dark.
-- [ ] Synthetic names only in tests and screenshots.
+- [x] 100% coverage. `verify` is green.
+- [x] Screenshots of every tab at 390px and 1440px, light and dark.
+- [x] Synthetic names only in tests and screenshots.
+
+## Notes and deviations (as built)
+
+- **`/years`** shipped as part of this phase too (the plan lists it under Phase 03's "Routes and
+  components"). Create has no input fields at all — the start year is always "the next missing
+  one" and the rate always copies forward (or falls back to 70c/hr), so there's nothing for the
+  user to fill in; rate/note become editable afterwards via "Edit rate".
+- **Action names deviate from the plan's suggested list** (`?/general`, `?/office`,
+  `?/archiveOffice`, `?/schedule`, `?/deleteSchedule`, `?/holiday`, `?/toggleHoliday`,
+  `?/deleteHoliday`, `?/region`). Built instead: `general` (region is one of its fields, not a
+  separate `?/region` action — one settings row, one form), `officeCreate`/`officeUpdate` split
+  instead of one overloaded `?/office`, `officeArchive`/`officeUnarchive`, `schedule`,
+  `deleteSchedule`, `holidayCreate`, `holidayToggle`, `holidayDelete`.
+- **The schedule editor's per-day office picker is a `ToggleGroup`, not a `<select>` or bits-ui's
+  `Select`.** See AGENTS.md §5 ("For a dynamic single-pick control...") — a native
+  `<option value={expr}>` in a `{#each}` carries an unreachable coverage branch with no fix, and
+  bits-ui's `Select` threw and tore down sibling markup inside the browser-mode test harness on
+  first open. `ToggleGroup` has neither problem and matches the Home/Office/Off control right
+  above it.
+- **Real bug caught by the end-to-end test, not by unit tests:** SvelteKit's default
+  `use:enhance` calls `form.reset()` after a successful submit, which silently blanked
+  `GeneralTab`'s bound time/number inputs (and would have done the same to
+  `ScheduleEditor`'s effective-from/cycle-length) back to empty rather than leaving the
+  just-saved values showing. Fixed with `onreset={(e) => e.preventDefault()}` on both forms —
+  synchronous and unit-tested (dispatch a `reset` event, assert the field is untouched), so it
+  didn't reintroduce the untestable-async-callback problem the `YearRow.svelte` forms were
+  deliberately built to avoid in this same phase.
+- **Two real accessibility findings from the end-to-end axe check, both fixed:** the inactive
+  tab-trigger text (`text-foreground/60`, the shadcn default) fell short of WCAG AA contrast
+  against this app's `--muted` tab-list background — fixed by overriding to
+  `text-muted-foreground` at the call site, not by editing the vendored component. And
+  `ScheduleTab`'s two `<h3>`s skipped a heading level under the page's `<h1>` — changed to
+  `<h2>`, matching "Historical import"'s existing `<h2>`.
+- **Toasts on action success** (the plan's "each success shows a sonner toast whose wording
+  matches the button") weren't built this phase — deferred, tracked as a gap for a future polish
+  pass rather than Phase 04+ scope creep now.
+- **Holiday tab's FY navigation** is prev/next only (no jump-to-year picker), matching what the
+  page actually needs for now; `/years` already lists every year for a direct jump if one is
+  ever wanted there.
+- **PR #2's Kilo review round, fixed post-merge-checklist, pre-merge:**
+  - **Critical:** `/settings`' `load` reseeded bundled holidays for the whole region on every
+    view, deleting every other FY's bundled rows and resetting any bundled holiday's `disabled`
+    flag. `replaceBundledHolidays` now takes the FY's `startYear` and scopes its delete/insert to
+    that FY's date range, carrying a matched row's `disabled` flag across the reseed.
+  - Duplicate office names, schedule effective-from dates and custom holidays threw an uncaught
+    UNIQUE constraint error (a 500) instead of a field error — `officeCreate`/`officeUpdate`/
+    `schedule`/`holidayCreate` now catch it via a new `isUniqueConstraintError` helper
+    (`$lib/server/db/errors.ts`) and return `fail(400, …)`, re-throwing anything else.
+  - `Number('')` is `0`, not `NaN`: a blanked rate or standard-break field silently saved as
+    zero. Both `parseDollarsToCents` (`/years`) and the new `parseNumberField` (`core/validation`,
+    used by `/settings`' `general` action) now reject a blank/whitespace string before conversion.
+  - `updateRate` had no `finalisedAt` guard, so a finalised year's rate could still be changed —
+    now checked and rejected with a field error.
+  - `OfficeRow` and `YearRow`'s edit forms closed on click regardless of the server's response,
+    silently discarding a validation failure. Both now close only from the actual `use:enhance`
+    result (`$app/state`'s `page.form`, scoped per row by id/startYear since it's shared page-wide)
+    and show the failure inline instead.
+  - The same "results never surfaced" gap applied to `GeneralTab`, `OfficesTab`, `ScheduleEditor`
+    and `HolidaysTab`'s add-forms — each now renders `page.form`'s first field error via a new
+    `firstFieldError` helper (`core/validation`). A reactive `$app/state` test stub
+    (`$lib/test-utils/pageFormStub.svelte.ts`, excluded from coverage) drives this in component
+    tests without a real server round trip.
+  - `ScheduleEditor`'s cycle-length `ToggleGroup` used `bind:value`, so re-clicking the active
+    option (a bits-ui deselect) could blank `cycleWeeks`; switched to `onValueChange` with the
+    same deselect guard already used by the mode/office groups.
+  - An empty `standardBreakMinutes` binds to `null`, not `0` — `GeneralTab`'s preview and its
+    explanatory comment were wrong; both fixed, and the field is now excluded from the preview
+    when cleared.
+  - The schedule editor could still persist `{ mode: 'office', officeId: null }` when there were
+    no offices. The "Office" toggle is now `disabled` whenever `offices.length === 0`, which also
+    made the old "No offices yet" placeholder branch dead code — removed.
+  - Two small fixes: `YearRow`'s `<h3>` skipped a heading level under `/years`' `<h1>` (now
+    `<h2>`, matching the same fix already made to `ScheduleTab`), and its rate/hours text carried
+    the same hidden-branch pattern as elsewhere (template-literal fix).
+  - Two test-quality fixes: a settings `load` test now asserts a bundled holiday from one FY
+    survives viewing another (the regression test for the critical fix above), and the E2E
+    schedule-save assertion is now scoped to the saved-versions list instead of matching text that
+    the always-visible editor also carries (which could pass even if nothing had actually saved).
+- **PR #2's second Kilo review round** (after the fixes above), also fixed:
+  - `OfficeRow`/`YearRow` re-showed a stale error (or closed the form on a stale success) if the
+    editor was reopened without a fresh submit — `page.form` doesn't clear itself. Both now
+    snapshot `page.form` when the editor opens (`openedWithForm`) and only treat a _different_
+    `page.form` reference as this attempt's own outcome, which also naturally covers switching
+    tabs away and back without resubmitting.
+  - `ScheduleEditor`'s `offices[0].id` (used only when a day is set to office mode) had no
+    fallback, relying solely on the "Office" toggle being disabled. Restored
+    `offices[0]?.id ?? null` with a `/* v8 ignore next */` (confirmed empirically that a
+    Playwright `force: true` click still doesn't fire a native `disabled` button's click handler
+    in Chromium, so the fallback branch has no way to be exercised through the UI) and added the
+    real enforcement layer Kilo also suggested: `scheduleSchema` now rejects `{ mode: 'office',
+officeId: null }` outright, closing the "crafted POST" gap regardless of any client guard.
+  - `updateRate` guarded a finalised year but not a non-existent `startYear` (any 2000–2100 value
+    passes `yearSchema`); `getYear` returning nothing now fails the action instead of a
+    `WHERE`-matches-nothing silent "success".
+  - Three test-quality fixes: the cycle-length deselect-guard test asserted `getByText('Week A')`
+    absence, which can't distinguish the fix from the bug (`''` and `'1'` are both `!== '2'`) —
+    now checks the actual submitted hidden field. The cross-FY holiday test's final assertion
+    re-loaded FY27, which would re-seed (and so re-insert) the very row being checked regardless
+    of the bug — now reads the DB directly after the FY28 load, with no third load. And the
+    `YearRow`/`OfficeRow` "ignores a result for a different row" tests asserted synchronously,
+    before Svelte's `$effect` (which would wrongly close the form on a scoping regression) gets a
+    chance to flush — now awaited, matching the sibling success/failure tests.
+  - Kilo's second-pass run itself failed once first, with "Agent wrapper made no execution
+    progress during the watchdog window" and zero new comments — an infrastructure timeout on
+    its side, confirmed via the check run's own output text, not a review verdict. Retriggered
+    with an empty commit rather than treated as a real finding.
+- **PR #2's third Kilo review round** (after the fixes above), also fixed:
+  - The new `scheduleSchema` refine rejected only `officeId: null`, not an id for an office that
+    doesn't exist — `{ mode: 'office', officeId: 9999 }` reached `createSchedule`, whose
+    `schedule_days.officeId` FK (`onDelete: 'restrict'`, enforced at runtime) threw a 500 instead
+    of a field error. `officeId` is now `.positive()` (rules out the obviously-wrong values in
+    the DB-free schema), and the `schedule` action checks the id against `listOffices(db, {
+includeArchived: true })` before calling `createSchedule`, returning `fail(400, …)` for an id
+    that isn't real. This is also what let the client-side `offices[0]?.id ?? null` fallback (and
+    its `/* v8 ignore next */`, added in the previous round) go back to a plain `offices[0].id`:
+    the real enforcement is server-side, the fallback bought nothing testable, and the ignore
+    comment would have suppressed both the reachable and unreachable branches on that line —
+    Kilo's own alternative suggestion.
+  - The refine's `path: ['officeId']` was inert: nested inside `days: z.array(...)`, zod always
+    prepends `['days', <index>]`, so `flatten()`'s `fieldErrors` keys on `days` regardless of
+    what the inner `path` said. Dropped it, and pinned the actual flattened key in the test.
+  - Two more test-quality fixes on the "stale error on reopen" tests (`YearRow`, `OfficeRow`):
+    the final check was a synchronous, non-retrying absence assertion with no positive anchor, so
+    it couldn't tell a correctly-suppressed stale error apart from the reopen itself silently
+    failing. Both now assert the form is back first (awaited), then that the alert is absent
+    (also awaited).
+  - `updateRate`'s "year does not exist" test asserted `listYears(db)` was `[]` — true regardless
+    of the new guard, since the test never created a year to begin with. Replaced with an
+    assertion on the actual failure message.
+  - This round also caught a self-inflicted slip: the phase doc's own second-round addendum had
+    a Prettier formatting issue that made CI's `verify` fail (a plain markdown-lint miss, not a
+    Kilo finding), because it was committed without re-running `npm run lint` after the last
+    edit. Fixed in a follow-up commit before this round's fixes.

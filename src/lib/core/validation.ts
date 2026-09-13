@@ -62,12 +62,23 @@ export const officeSchema = z.object({
 	address: z.string().trim().min(1).nullable()
 });
 
-const scheduleDaySchema = z.object({
-	weekIndex: z.number().int().min(0).max(1),
-	weekday: z.number().int().min(1).max(7),
-	mode: z.enum(['home', 'office', 'off']),
-	officeId: z.number().int().nullable()
-});
+const scheduleDaySchema = z
+	.object({
+		weekIndex: z.number().int().min(0).max(1),
+		weekday: z.number().int().min(1).max(7),
+		mode: z.enum(['home', 'office', 'off']),
+		// A positive id rules out the obviously-invalid cases (negative, zero) here, in a
+		// DB-free schema; whether it's an office that actually exists is checked separately in
+		// the `schedule` action, which has DB access.
+		officeId: z.number().int().positive().nullable()
+	})
+	// No `path`: this schema is always parsed inside `days: z.array(...)`, so zod prepends
+	// `['days', <index>]` to any issue regardless, and `flatten()` keys `fieldErrors` on that
+	// first segment either way — a `path` here would just misleadingly imply the error lands
+	// under `officeId`.
+	.refine((day) => day.mode !== 'office' || day.officeId !== null, {
+		message: 'An office day needs an office'
+	});
 
 export const scheduleSchema = z
 	.object({
@@ -148,6 +159,32 @@ export const leaveRangeSchema = z
 		message: 'The range must end on or after it starts',
 		path: ['to']
 	});
+
+/**
+ * Parses a form field expected to hold a number, treating a blank or whitespace-only string as
+ * invalid rather than the `0` that `Number('')` would otherwise silently produce — the schema's
+ * `z.number()` then rejects the resulting `NaN` with a proper field error instead of the field
+ * ending up saved as a real (and wrong) zero.
+ */
+export function parseNumberField(value: FormDataEntryValue | null): number {
+	if (typeof value !== 'string' || value.trim() === '') return NaN;
+	return Number(value);
+}
+
+/**
+ * The first message out of a zod `flatten().fieldErrors` object, in field-declaration order —
+ * enough for a form to show one line explaining why its last submit failed, without listing
+ * every field's errors separately.
+ */
+export function firstFieldError(
+	errors: Record<string, string[] | undefined> | null | undefined
+): string | null {
+	if (!errors) return null;
+	for (const messages of Object.values(errors)) {
+		if (messages && messages.length > 0) return messages[0];
+	}
+	return null;
+}
 
 export type SettingsInput = z.infer<typeof settingsSchema>;
 export type YearInput = z.infer<typeof yearSchema>;

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createDb, type Db } from '../db/create';
-import { archiveOffice, createOffice, listOffices, updateOffice } from './offices';
+import { archiveOffice, createOffice, listOffices, unarchiveOffice, updateOffice } from './offices';
 
 let db: Db;
 
@@ -56,5 +56,16 @@ describe('archiveOffice and listOffices filtering', () => {
 			'Office Location 1',
 			'Office Location 2'
 		]);
+	});
+});
+
+describe('unarchiveOffice', () => {
+	it('brings an archived office back into the default listing', () => {
+		const office = createOffice(db, { name: 'Office Location 1' });
+		archiveOffice(db, office.id, '2027-01-01');
+		expect(listOffices(db)).toEqual([]);
+
+		unarchiveOffice(db, office.id);
+		expect(listOffices(db).map((o) => o.name)).toEqual(['Office Location 1']);
 	});
 });
