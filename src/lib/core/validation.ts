@@ -67,11 +67,17 @@ const scheduleDaySchema = z
 		weekIndex: z.number().int().min(0).max(1),
 		weekday: z.number().int().min(1).max(7),
 		mode: z.enum(['home', 'office', 'off']),
-		officeId: z.number().int().nullable()
+		// A positive id rules out the obviously-invalid cases (negative, zero) here, in a
+		// DB-free schema; whether it's an office that actually exists is checked separately in
+		// the `schedule` action, which has DB access.
+		officeId: z.number().int().positive().nullable()
 	})
+	// No `path`: this schema is always parsed inside `days: z.array(...)`, so zod prepends
+	// `['days', <index>]` to any issue regardless, and `flatten()` keys `fieldErrors` on that
+	// first segment either way — a `path` here would just misleadingly imply the error lands
+	// under `officeId`.
 	.refine((day) => day.mode !== 'office' || day.officeId !== null, {
-		message: 'An office day needs an office',
-		path: ['officeId']
+		message: 'An office day needs an office'
 	});
 
 export const scheduleSchema = z

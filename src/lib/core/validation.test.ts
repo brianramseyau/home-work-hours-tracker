@@ -130,10 +130,23 @@ describe('scheduleSchema', () => {
 
 	it('rejects an office day with no office', () => {
 		// Guards a crafted request bypassing the schedule editor's own UI, which disables the
-		// "Office" toggle whenever there are no offices to pick from.
+		// "Office" toggle whenever there are no offices to pick from. `days` is always the
+		// flattened key (zod prepends it to every issue inside the array, ahead of any `path`
+		// set inside scheduleDaySchema's own refine), which is why there's no `path` there.
 		const result = scheduleSchema.safeParse({
 			...valid,
 			days: [{ weekIndex: 0, weekday: 1, mode: 'office', officeId: null }]
+		});
+		expect(result.success).toBe(false);
+		expect(result.success ? undefined : result.error.flatten().fieldErrors.days).toContain(
+			'An office day needs an office'
+		);
+	});
+
+	it('rejects a non-positive office id', () => {
+		const result = scheduleSchema.safeParse({
+			...valid,
+			days: [{ weekIndex: 0, weekday: 1, mode: 'office', officeId: 0 }]
 		});
 		expect(result.success).toBe(false);
 	});

@@ -342,6 +342,42 @@ describe('schedule actions', () => {
 		expect(listSchedules(db)).toHaveLength(1);
 	});
 
+	it('fails a day whose office does not exist, instead of hitting a foreign-key 500', async () => {
+		const { actions } = await import('./+page.server');
+		const days = [{ weekIndex: 0, weekday: 1, mode: 'office', officeId: 999 }];
+		const result = await actions.schedule(
+			actionEvent({
+				effectiveFrom: '2026-07-01',
+				cycleWeeks: '1',
+				anchorMonday: '2026-06-29',
+				days: JSON.stringify(days)
+			})
+		);
+		expect(result).toMatchObject({
+			status: 400,
+			data: { errors: { days: ['One of these offices does not exist.'] } }
+		});
+		expect(listSchedules(db)).toEqual([]);
+	});
+
+	it('accepts a day whose office is archived, not deleted', async () => {
+		const office = createOffice(db, { name: 'Office Location 1' });
+		const { archiveOffice } = await import('$lib/server/repo/offices');
+		archiveOffice(db, office.id, '2026-08-01');
+
+		const { actions } = await import('./+page.server');
+		const days = [{ weekIndex: 0, weekday: 1, mode: 'office', officeId: office.id }];
+		const result = await actions.schedule(
+			actionEvent({
+				effectiveFrom: '2026-07-01',
+				cycleWeeks: '1',
+				anchorMonday: '2026-06-29',
+				days: JSON.stringify(days)
+			})
+		);
+		expect(result).toMatchObject({ success: true });
+	});
+
 	it('fails when the days field is missing entirely', async () => {
 		const { actions } = await import('./+page.server');
 		const result = await actions.schedule(

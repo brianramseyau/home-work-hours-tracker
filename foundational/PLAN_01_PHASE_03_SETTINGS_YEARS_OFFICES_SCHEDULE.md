@@ -187,3 +187,30 @@ officeId: null }` outright, closing the "crafted POST" gap regardless of any cli
     progress during the watchdog window" and zero new comments — an infrastructure timeout on
     its side, confirmed via the check run's own output text, not a review verdict. Retriggered
     with an empty commit rather than treated as a real finding.
+- **PR #2's third Kilo review round** (after the fixes above), also fixed:
+  - The new `scheduleSchema` refine rejected only `officeId: null`, not an id for an office that
+    doesn't exist — `{ mode: 'office', officeId: 9999 }` reached `createSchedule`, whose
+    `schedule_days.officeId` FK (`onDelete: 'restrict'`, enforced at runtime) threw a 500 instead
+    of a field error. `officeId` is now `.positive()` (rules out the obviously-wrong values in
+    the DB-free schema), and the `schedule` action checks the id against `listOffices(db, {
+includeArchived: true })` before calling `createSchedule`, returning `fail(400, …)` for an id
+    that isn't real. This is also what let the client-side `offices[0]?.id ?? null` fallback (and
+    its `/* v8 ignore next */`, added in the previous round) go back to a plain `offices[0].id`:
+    the real enforcement is server-side, the fallback bought nothing testable, and the ignore
+    comment would have suppressed both the reachable and unreachable branches on that line —
+    Kilo's own alternative suggestion.
+  - The refine's `path: ['officeId']` was inert: nested inside `days: z.array(...)`, zod always
+    prepends `['days', <index>]`, so `flatten()`'s `fieldErrors` keys on `days` regardless of
+    what the inner `path` said. Dropped it, and pinned the actual flattened key in the test.
+  - Two more test-quality fixes on the "stale error on reopen" tests (`YearRow`, `OfficeRow`):
+    the final check was a synchronous, non-retrying absence assertion with no positive anchor, so
+    it couldn't tell a correctly-suppressed stale error apart from the reopen itself silently
+    failing. Both now assert the form is back first (awaited), then that the alert is absent
+    (also awaited).
+  - `updateRate`'s "year does not exist" test asserted `listYears(db)` was `[]` — true regardless
+    of the new guard, since the test never created a year to begin with. Replaced with an
+    assertion on the actual failure message.
+  - This round also caught a self-inflicted slip: the phase doc's own second-round addendum had
+    a Prettier formatting issue that made CI's `verify` fail (a plain markdown-lint miss, not a
+    Kilo finding), because it was committed without re-running `npm run lint` after the last
+    edit. Fixed in a follow-up commit before this round's fixes.

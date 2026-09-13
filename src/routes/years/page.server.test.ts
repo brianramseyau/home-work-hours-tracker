@@ -164,10 +164,10 @@ describe('actions.updateRate', () => {
 		const result = await actions.updateRate(
 			actionEvent({ startYear: '2099', rateDollars: '0.75', rateNote: '' })
 		);
-		expect(result).toMatchObject({ status: 400 });
-
-		const { listYears } = await import('$lib/server/repo/years');
-		expect(listYears(db)).toEqual([]);
+		expect(result).toMatchObject({
+			status: 400,
+			data: { errors: { startYear: ['This financial year does not exist.'] } }
+		});
 	});
 
 	it('refuses to change the rate of a finalised year', async () => {

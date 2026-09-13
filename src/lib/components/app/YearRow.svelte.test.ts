@@ -98,9 +98,12 @@ describe('YearRow', () => {
 
 		await page.getByRole('button', { name: 'Cancel' }).click();
 		await page.getByRole('button', { name: 'Edit rate' }).click();
+		// Anchored on the form actually being back open (proving the reopen itself worked),
+		// then awaited so the check doesn't just sample the DOM before Svelte's flush.
+		await expect.element(page.getByLabelText('Rate ($/hr)')).toBeInTheDocument();
 		// page.form still carries the old failure, but reopening re-snapshots it as "already
 		// seen", so it shouldn't render again as this fresh attempt's own outcome.
-		expect(page.getByRole('alert').elements()).toHaveLength(0);
+		await expect.element(page.getByRole('alert')).not.toBeInTheDocument();
 	});
 
 	it('ignores a save result for a different year', async () => {

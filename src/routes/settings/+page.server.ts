@@ -180,6 +180,22 @@ export const actions: Actions = {
 			return fail(400, { form: 'schedule', errors: parsed.error.flatten().fieldErrors });
 		}
 
+		// scheduleSchema only rules out an obviously-invalid id (non-positive); an id that's
+		// merely not a real office (a crafted request bypassing the editor's own picker, which
+		// only ever offers real ones) is checked here, where the office list is available.
+		const officeIds = new Set(
+			listOffices(db, { includeArchived: true }).map((office) => office.id)
+		);
+		const unknownOfficeId = parsed.data.days.some(
+			(day) => day.officeId !== null && !officeIds.has(day.officeId)
+		);
+		if (unknownOfficeId) {
+			return fail(400, {
+				form: 'schedule',
+				errors: { days: ['One of these offices does not exist.'] }
+			});
+		}
+
 		try {
 			createSchedule(db, parsed.data);
 		} catch (error) {
