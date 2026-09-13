@@ -116,5 +116,6 @@ Native date and time inputs follow the **browser's** UI language, not the page's
 ## 8. Conventions
 
 - Svelte 5 runes mode is forced project-wide. TypeScript is strict. Prettier and ESLint must pass.
-- Commit on `main` at the end of each phase, after `npm run verify` passes and the diff has been PII-checked. Never push to a remote or create the GitHub repo without the owner's confirmation.
+- **Work on a branch, not directly on `main`.** One branch per phase (or per logical unit of work within a phase, for something phase 03/05/06-sized run in parallel). Name it after the phase doc, e.g. `phase-03-settings-years-offices-schedule`.
+- Commit once `npm run verify` passes and the diff has been PII-checked, then push the branch and open a PR against `main` with `gh pr create`. CI (`pii-scan` + `verify`) runs automatically on the PR; don't merge until both are green. Never push or open a PR without the owner's confirmation, same as before.
 - Keep the docs current: update the phase doc, DESIGN.md's decisions log, and this file when commands or rules change.
