@@ -78,6 +78,45 @@ Standard-hours changes call `replanFrom(current FY start)`. Only `prefill` rows 
 
 ## Acceptance criteria
 
-- [ ] 100% coverage. `verify` is green.
-- [ ] Screenshots of every tab at 390px and 1440px, light and dark.
-- [ ] Synthetic names only in tests and screenshots.
+- [x] 100% coverage. `verify` is green.
+- [x] Screenshots of every tab at 390px and 1440px, light and dark.
+- [x] Synthetic names only in tests and screenshots.
+
+## Notes and deviations (as built)
+
+- **`/years`** shipped as part of this phase too (the plan lists it under Phase 03's "Routes and
+  components"). Create has no input fields at all — the start year is always "the next missing
+  one" and the rate always copies forward (or falls back to 70c/hr), so there's nothing for the
+  user to fill in; rate/note become editable afterwards via "Edit rate".
+- **Action names deviate from the plan's suggested list** (`?/general`, `?/office`,
+  `?/archiveOffice`, `?/schedule`, `?/deleteSchedule`, `?/holiday`, `?/toggleHoliday`,
+  `?/deleteHoliday`, `?/region`). Built instead: `general` (region is one of its fields, not a
+  separate `?/region` action — one settings row, one form), `officeCreate`/`officeUpdate` split
+  instead of one overloaded `?/office`, `officeArchive`/`officeUnarchive`, `schedule`,
+  `deleteSchedule`, `holidayCreate`, `holidayToggle`, `holidayDelete`.
+- **The schedule editor's per-day office picker is a `ToggleGroup`, not a `<select>` or bits-ui's
+  `Select`.** See AGENTS.md §5 ("For a dynamic single-pick control...") — a native
+  `<option value={expr}>` in a `{#each}` carries an unreachable coverage branch with no fix, and
+  bits-ui's `Select` threw and tore down sibling markup inside the browser-mode test harness on
+  first open. `ToggleGroup` has neither problem and matches the Home/Office/Off control right
+  above it.
+- **Real bug caught by the end-to-end test, not by unit tests:** SvelteKit's default
+  `use:enhance` calls `form.reset()` after a successful submit, which silently blanked
+  `GeneralTab`'s bound time/number inputs (and would have done the same to
+  `ScheduleEditor`'s effective-from/cycle-length) back to empty rather than leaving the
+  just-saved values showing. Fixed with `onreset={(e) => e.preventDefault()}` on both forms —
+  synchronous and unit-tested (dispatch a `reset` event, assert the field is untouched), so it
+  didn't reintroduce the untestable-async-callback problem the `YearRow.svelte` forms were
+  deliberately built to avoid in this same phase.
+- **Two real accessibility findings from the end-to-end axe check, both fixed:** the inactive
+  tab-trigger text (`text-foreground/60`, the shadcn default) fell short of WCAG AA contrast
+  against this app's `--muted` tab-list background — fixed by overriding to
+  `text-muted-foreground` at the call site, not by editing the vendored component. And
+  `ScheduleTab`'s two `<h3>`s skipped a heading level under the page's `<h1>` — changed to
+  `<h2>`, matching "Historical import"'s existing `<h2>`.
+- **Toasts on action success** (the plan's "each success shows a sonner toast whose wording
+  matches the button") weren't built this phase — deferred, tracked as a gap for a future polish
+  pass rather than Phase 04+ scope creep now.
+- **Holiday tab's FY navigation** is prev/next only (no jump-to-year picker), matching what the
+  page actually needs for now; `/years` already lists every year for a direct jump if one is
+  ever wanted there.

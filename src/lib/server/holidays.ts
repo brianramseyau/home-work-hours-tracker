@@ -47,7 +47,7 @@ function isLeapYear(year: number): boolean {
  * A 29 Feb anniversary clamps to 28 Feb in a non-leap projected year, rather than producing a
  * calendar date that doesn't exist (which would just silently never match any real date).
  */
-function projectIntoFy(date: string, startYear: number): string {
+export function projectIntoFy(date: string, startYear: number): string {
 	const [, month, day] = date.split('-');
 	// Jul–Dec belongs to the FY's first calendar year; Jan–Jun to its second.
 	const year = Number(month) >= 7 ? startYear : startYear + 1;
