@@ -121,6 +121,26 @@ describe('effectiveHolidays', () => {
 		]);
 	});
 
+	it('clamps 29 Feb for a century year that is not a leap year (the %4 rule alone gets wrong)', () => {
+		// FY starting 2099 ends June 2100; 2100 % 4 === 0 but 2100 is not a leap year.
+		const custom: HolidayRow[] = [
+			{ date: '2020-02-29', name: 'Leap anniversary', repeatsYearly: true, disabled: false }
+		];
+		expect(effectiveHolidays([], custom, { startYear: 2099 })).toEqual([
+			{ date: '2100-02-28', name: 'Leap anniversary' }
+		]);
+	});
+
+	it('keeps 29 Feb for a century year divisible by 400', () => {
+		// FY starting 1999 ends June 2000, which is a leap year despite being a century year.
+		const custom: HolidayRow[] = [
+			{ date: '2020-02-29', name: 'Leap anniversary', repeatsYearly: true, disabled: false }
+		];
+		expect(effectiveHolidays([], custom, { startYear: 1999 })).toEqual([
+			{ date: '2000-02-29', name: 'Leap anniversary' }
+		]);
+	});
+
 	it('excludes a disabled repeating custom holiday', () => {
 		const custom: HolidayRow[] = [
 			{ date: '2019-09-14', name: 'Anniversary', repeatsYearly: true, disabled: true }
