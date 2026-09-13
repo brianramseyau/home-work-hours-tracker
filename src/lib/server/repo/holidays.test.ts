@@ -47,6 +47,23 @@ describe('replaceBundledHolidays', () => {
 		replaceBundledHolidays(db, 'AU-VIC', []);
 		expect(listHolidays(db, 'AU-VIC')).toEqual([]);
 	});
+
+	it('re-seeds bundled rows cleanly even when a custom row shares a date, region and name', () => {
+		addCustomHoliday(db, {
+			date: '2026-12-25',
+			name: 'Christmas Day',
+			region: 'AU-VIC',
+			repeatsYearly: false
+		});
+
+		expect(() =>
+			replaceBundledHolidays(db, 'AU-VIC', [{ date: '2026-12-25', name: 'Christmas Day' }])
+		).not.toThrow();
+
+		const rows = listHolidays(db, 'AU-VIC');
+		expect(rows).toHaveLength(2);
+		expect(rows.map((row) => row.source).sort()).toEqual(['bundled', 'custom']);
+	});
 });
 
 describe('addCustomHoliday', () => {

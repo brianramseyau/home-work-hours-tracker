@@ -36,6 +36,10 @@ describe('settingsSchema', () => {
 	it('rejects an empty holiday region', () => {
 		expect(settingsSchema.safeParse({ ...valid, holidayRegion: '' }).success).toBe(false);
 	});
+
+	it('rejects a region date-holidays has no AU state data for', () => {
+		expect(settingsSchema.safeParse({ ...valid, holidayRegion: 'US-CA' }).success).toBe(false);
+	});
 });
 
 describe('yearSchema', () => {
@@ -100,6 +104,28 @@ describe('scheduleSchema', () => {
 	it('rejects an unsupported cycle length', () => {
 		expect(scheduleSchema.safeParse({ ...valid, cycleWeeks: 3 }).success).toBe(false);
 	});
+
+	it('rejects a duplicate weekIndex/weekday pair', () => {
+		const result = scheduleSchema.safeParse({
+			...valid,
+			days: [
+				{ weekIndex: 0, weekday: 1, mode: 'home', officeId: null },
+				{ weekIndex: 0, weekday: 1, mode: 'office', officeId: null }
+			]
+		});
+		expect(result.success).toBe(false);
+	});
+
+	it('accepts the same weekday in two different cycle weeks', () => {
+		const result = scheduleSchema.safeParse({
+			...valid,
+			days: [
+				{ weekIndex: 0, weekday: 1, mode: 'home', officeId: null },
+				{ weekIndex: 1, weekday: 1, mode: 'office', officeId: null }
+			]
+		});
+		expect(result.success).toBe(true);
+	});
 });
 
 describe('daySchema', () => {
@@ -137,6 +163,30 @@ describe('daySchema', () => {
 
 	it('rejects an unknown kind', () => {
 		expect(daySchema.safeParse({ ...valid, kind: 'holiday' }).success).toBe(false);
+	});
+
+	it('rejects overlapping blocks, in whatever order they are submitted', () => {
+		const overlapping = [
+			{ start: '13:00', end: '15:00', breakMinutes: 0 },
+			{ start: '09:00', end: '14:00', breakMinutes: 0 } // ends after the other starts
+		];
+		expect(daySchema.safeParse({ ...valid, blocks: overlapping }).success).toBe(false);
+	});
+
+	it('accepts back-to-back, non-overlapping blocks', () => {
+		const backToBack = [
+			{ start: '09:00', end: '12:00', breakMinutes: 0 },
+			{ start: '12:00', end: '15:00', breakMinutes: 0 }
+		];
+		expect(daySchema.safeParse({ ...valid, blocks: backToBack }).success).toBe(true);
+	});
+
+	it('does not report a false overlap when a block is already malformed', () => {
+		const result = daySchema.safeParse({
+			...valid,
+			blocks: [{ start: '9:00', end: '17:06', breakMinutes: 30 }]
+		});
+		expect(result.success).toBe(false);
 	});
 });
 

@@ -133,6 +133,38 @@ describe('planPrefill: weekends', () => {
 		const plan = planPrefill(baseInput({ to: '2026-07-12', includeWeekends: true }));
 		expect(insertedFor(plan, '2026-07-11')).toBeUndefined();
 	});
+
+	it('deletes a stale prefill row on a weekend once includeWeekends is turned off', () => {
+		const staleWeekendRow: Day = {
+			date: '2026-07-11', // Saturday
+			kind: 'work',
+			officeId: null,
+			notes: null,
+			source: 'prefill',
+			blocks: [standard]
+		};
+		const plan = planPrefill(
+			baseInput({ to: '2026-07-12', existing: [staleWeekendRow], includeWeekends: false })
+		);
+		expect(plan.deletes).toEqual(['2026-07-11']);
+		expect(insertedFor(plan, '2026-07-11')).toBeUndefined();
+	});
+
+	it('leaves a manual or import row on a weekend alone when includeWeekends is off', () => {
+		const manualWeekendRow: Day = {
+			date: '2026-07-11',
+			kind: 'sick',
+			officeId: null,
+			notes: null,
+			source: 'manual',
+			blocks: []
+		};
+		const plan = planPrefill(
+			baseInput({ to: '2026-07-12', existing: [manualWeekendRow], includeWeekends: false })
+		);
+		expect(plan.deletes).toHaveLength(0);
+		expect(plan.updates).toHaveLength(0);
+	});
 });
 
 describe('planPrefill: manual and import rows are never touched', () => {
@@ -146,6 +178,7 @@ describe('planPrefill: manual and import rows are never touched', () => {
 			blocks: []
 		};
 		const plan = planPrefill(baseInput({ existing: [manualDay] }));
+		expect(insertedFor(plan, '2026-07-07')).toBeUndefined();
 		expect(plan.updates.find((day) => day.date === '2026-07-07')).toBeUndefined();
 		expect(plan.deletes).not.toContain('2026-07-07');
 	});
@@ -160,6 +193,7 @@ describe('planPrefill: manual and import rows are never touched', () => {
 			blocks: []
 		};
 		const plan = planPrefill(baseInput({ existing: [importedDay] }));
+		expect(insertedFor(plan, '2026-07-06')).toBeUndefined();
 		expect(plan.updates).toHaveLength(0);
 		expect(plan.deletes).toHaveLength(0);
 	});

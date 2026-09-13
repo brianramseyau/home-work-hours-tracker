@@ -43,9 +43,14 @@ export function planPrefill(input: PrefillInput): PrefillPlan {
 	const deletes: string[] = [];
 
 	for (const date of eachDate(input.from, input.to)) {
-		if (isWeekend(date) && !input.includeWeekends) continue;
-
-		const desired = desiredDay(date, holidayDates, input.schedules, input.standard);
+		// A weekend is never *planned* while the setting is off, but a stale `prefill` row from
+		// when it was on (or from a schedule that has since dropped the weekend entry) still
+		// needs cleaning up — so this counts as just another reason `desired` is null, not an
+		// early exit, and falls through to the same existing-row handling as any other off day.
+		const skipWeekend = isWeekend(date) && !input.includeWeekends;
+		const desired = skipWeekend
+			? null
+			: desiredDay(date, holidayDates, input.schedules, input.standard);
 		const current = existingByDate.get(date);
 
 		if (!current) {

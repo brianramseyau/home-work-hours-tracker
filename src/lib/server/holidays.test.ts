@@ -101,6 +101,26 @@ describe('effectiveHolidays', () => {
 		]);
 	});
 
+	it('clamps a 29 Feb anniversary to 28 Feb when the projected year is not a leap year', () => {
+		// FY27 ends June 2027, and 2027 is not a leap year.
+		const custom: HolidayRow[] = [
+			{ date: '2020-02-29', name: 'Leap anniversary', repeatsYearly: true, disabled: false }
+		];
+		expect(effectiveHolidays([], custom, fy)).toEqual([
+			{ date: '2027-02-28', name: 'Leap anniversary' }
+		]);
+	});
+
+	it('keeps 29 Feb as-is when the projected year is a leap year', () => {
+		// FY28 ends June 2028, and 2028 is a leap year.
+		const custom: HolidayRow[] = [
+			{ date: '2020-02-29', name: 'Leap anniversary', repeatsYearly: true, disabled: false }
+		];
+		expect(effectiveHolidays([], custom, { startYear: 2027 })).toEqual([
+			{ date: '2028-02-29', name: 'Leap anniversary' }
+		]);
+	});
+
 	it('excludes a disabled repeating custom holiday', () => {
 		const custom: HolidayRow[] = [
 			{ date: '2019-09-14', name: 'Anniversary', repeatsYearly: true, disabled: true }

@@ -10,6 +10,7 @@ CREATE TABLE `days` (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `days_date_unique` ON `days` (`date`);--> statement-breakpoint
+CREATE INDEX `days_office_id_idx` ON `days` (`office_id`);--> statement-breakpoint
 CREATE TABLE `financial_years` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`start_year` integer NOT NULL,
@@ -30,7 +31,7 @@ CREATE TABLE `holidays` (
 );
 --> statement-breakpoint
 CREATE INDEX `holidays_region_date_idx` ON `holidays` (`region`,`date`);--> statement-breakpoint
-CREATE UNIQUE INDEX `holidays_date_region_name_unique` ON `holidays` (`date`,`region`,`name`);--> statement-breakpoint
+CREATE UNIQUE INDEX `holidays_date_region_name_source_unique` ON `holidays` (`date`,`region`,`name`,`source`);--> statement-breakpoint
 CREATE TABLE `home_blocks` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`day_id` integer NOT NULL,
@@ -61,6 +62,7 @@ CREATE TABLE `schedule_days` (
 	FOREIGN KEY (`office_id`) REFERENCES `offices`(`id`) ON UPDATE no action ON DELETE restrict
 );
 --> statement-breakpoint
+CREATE INDEX `schedule_days_office_id_idx` ON `schedule_days` (`office_id`);--> statement-breakpoint
 CREATE UNIQUE INDEX `schedule_days_schedule_id_week_index_weekday_unique` ON `schedule_days` (`schedule_id`,`week_index`,`weekday`);--> statement-breakpoint
 CREATE TABLE `schedules` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,

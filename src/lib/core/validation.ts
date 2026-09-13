@@ -11,10 +11,25 @@ const HH_MM = /^([0-1]\d|2[0-3]):([0-5]\d)$/;
 const isoDate = z.string().regex(ISO_DATE, 'Expected a date in YYYY-MM-DD format');
 const hhMm = z.string().regex(HH_MM, 'Expected a time in HH:mm format');
 
+// The AU states date-holidays has data for. bundledHolidays() passes this straight to
+// `new Holidays(country, state)`, which throws (or silently returns nothing) on a code it
+// doesn't recognise — validated here so a bad value is a field error, not a 500.
+const AU_HOLIDAY_REGIONS = [
+	'AU-ACT',
+	'AU-NSW',
+	'AU-NT',
+	'AU-QLD',
+	'AU-SA',
+	'AU-TAS',
+	'AU-VIC',
+	'AU-WA'
+] as const;
+const holidayRegion = z.enum(AU_HOLIDAY_REGIONS, 'Choose a holiday region');
+
 export const settingsSchema = z
 	.object({
 		fullName: z.string().trim().min(1).nullable(),
-		holidayRegion: z.string().min(1, 'Choose a holiday region'),
+		holidayRegion,
 		standardStart: hhMm,
 		standardEnd: hhMm,
 		standardBreakMinutes: z.number().int().min(0),
@@ -68,7 +83,17 @@ export const scheduleSchema = z
 	.refine((value) => value.days.every((day) => day.weekIndex < value.cycleWeeks), {
 		message: 'A day belongs to a week index outside the cycle length',
 		path: ['days']
-	});
+	})
+	.refine(
+		(value) => {
+			const keys = value.days.map((day) => `${day.weekIndex}-${day.weekday}`);
+			return keys.length === new Set(keys).size;
+		},
+		{
+			message: 'Each weekday can only appear once per week of the cycle',
+			path: ['days']
+		}
+	);
 
 const homeBlockSchema = z
 	.object({
@@ -84,18 +109,31 @@ const homeBlockSchema = z
 		}
 	);
 
-export const daySchema = z.object({
-	date: isoDate,
-	kind: z.enum(['work', 'leave', 'sick', 'public_holiday', 'off']),
-	officeId: z.number().int().nullable(),
-	notes: z.string().trim().min(1).nullable(),
-	blocks: z.array(homeBlockSchema)
-});
+/** True if any two (already HH:mm-valid) blocks overlap, once sorted by start time. */
+function hasOverlappingBlocks(blocks: { start: string; end: string }[]): boolean {
+	const validlyTimed = blocks.filter((block) => HH_MM.test(block.start) && HH_MM.test(block.end));
+	const sorted = [...validlyTimed].sort((a, b) => a.start.localeCompare(b.start));
+	return sorted.some((block, index) => index > 0 && block.start < sorted[index - 1].end);
+}
+
+export const daySchema = z
+	.object({
+		date: isoDate,
+		kind: z.enum(['work', 'leave', 'sick', 'public_holiday', 'off']),
+		officeId: z.number().int().nullable(),
+		notes: z.string().trim().min(1).nullable(),
+		blocks: z.array(homeBlockSchema)
+	})
+	.refine((value) => !hasOverlappingBlocks(value.blocks), {
+		message:
+			'Time blocks cannot overlap — each home block counted toward the claim must be a separate span',
+		path: ['blocks']
+	});
 
 export const holidaySchema = z.object({
 	date: isoDate,
 	name: z.string().trim().min(1, 'Name the holiday'),
-	region: z.string().min(1),
+	region: holidayRegion,
 	repeatsYearly: z.boolean(),
 	disabled: z.boolean()
 });

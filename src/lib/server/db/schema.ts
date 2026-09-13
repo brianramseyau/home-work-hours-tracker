@@ -56,19 +56,28 @@ export const scheduleDays = sqliteTable(
 		mode: text('mode', { enum: ['home', 'office', 'off'] }).notNull(),
 		officeId: integer('office_id').references(() => offices.id, { onDelete: 'restrict' })
 	},
-	(table) => [unique().on(table.scheduleId, table.weekIndex, table.weekday)]
+	(table) => [
+		unique().on(table.scheduleId, table.weekIndex, table.weekday),
+		index('schedule_days_office_id_idx').on(table.officeId)
+	]
 );
 
 /** One calendar day's record. Auto-prefill only ever touches `source = 'prefill'` rows. */
-export const days = sqliteTable('days', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	date: text('date').notNull().unique(),
-	kind: text('kind', { enum: ['work', 'leave', 'sick', 'public_holiday', 'off'] }).notNull(),
-	officeId: integer('office_id').references(() => offices.id, { onDelete: 'restrict' }),
-	notes: text('notes'),
-	source: text('source', { enum: ['prefill', 'manual', 'import'] }).notNull(),
-	updatedAt: text('updated_at').notNull()
-});
+export const days = sqliteTable(
+	'days',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		date: text('date').notNull().unique(),
+		kind: text('kind', { enum: ['work', 'leave', 'sick', 'public_holiday', 'off'] }).notNull(),
+		officeId: integer('office_id').references(() => offices.id, { onDelete: 'restrict' }),
+		notes: text('notes'),
+		source: text('source', { enum: ['prefill', 'manual', 'import'] }).notNull(),
+		updatedAt: text('updated_at').notNull()
+	},
+	// SQLite doesn't auto-index FK child columns the way some other engines do; without this,
+	// enforcing `office_id`'s ON DELETE RESTRICT means a full table scan.
+	(table) => [index('days_office_id_idx').on(table.officeId)]
+);
 
 /** A worked-from-home time span within a day. A day may have several (split days). */
 export const homeBlocks = sqliteTable(
@@ -100,7 +109,10 @@ export const holidays = sqliteTable(
 		disabled: integer('disabled', { mode: 'boolean' }).notNull().default(false)
 	},
 	(table) => [
-		unique().on(table.date, table.region, table.name),
+		// Includes `source` so a custom holiday can share a date/name with a bundled one (e.g.
+		// the user adds one before realising it's already seeded) without a UNIQUE collision —
+		// which would otherwise also roll back replaceBundledHolidays' whole reseed.
+		unique().on(table.date, table.region, table.name, table.source),
 		index('holidays_region_date_idx').on(table.region, table.date)
 	]
 );

@@ -35,12 +35,23 @@ export interface HolidayRow {
 	disabled: boolean;
 }
 
-/** Projects a repeating custom holiday's month/day onto the financial year starting `startYear`. */
+// The full Gregorian century-exception rule doesn't matter for any year this app will ever
+// realistically compute a financial year for.
+function isLeapYear(year: number): boolean {
+	return year % 4 === 0;
+}
+
+/**
+ * Projects a repeating custom holiday's month/day onto the financial year starting `startYear`.
+ * A 29 Feb anniversary clamps to 28 Feb in a non-leap projected year, rather than producing a
+ * calendar date that doesn't exist (which would just silently never match any real date).
+ */
 function projectIntoFy(date: string, startYear: number): string {
 	const [, month, day] = date.split('-');
 	// Jul–Dec belongs to the FY's first calendar year; Jan–Jun to its second.
 	const year = Number(month) >= 7 ? startYear : startYear + 1;
-	return `${year}-${month}-${day}`;
+	const projectedDay = month === '02' && day === '29' && !isLeapYear(year) ? '28' : day;
+	return `${year}-${month}-${projectedDay}`;
 }
 
 /**

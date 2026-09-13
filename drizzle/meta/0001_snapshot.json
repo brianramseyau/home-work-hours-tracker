@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "0447e65f-88d0-45f2-a848-71dee7d5ae6e",
+  "id": "7f409b39-a0f6-45c8-9c19-73204d4c957c",
   "prevId": "9c67b5c2-3774-41ad-b14c-a270308f5340",
   "tables": {
     "days": {
@@ -64,6 +64,13 @@
             "date"
           ],
           "isUnique": true
+        },
+        "days_office_id_idx": {
+          "name": "days_office_id_idx",
+          "columns": [
+            "office_id"
+          ],
+          "isUnique": false
         }
       },
       "foreignKeys": {
@@ -202,12 +209,13 @@
           ],
           "isUnique": false
         },
-        "holidays_date_region_name_unique": {
-          "name": "holidays_date_region_name_unique",
+        "holidays_date_region_name_source_unique": {
+          "name": "holidays_date_region_name_source_unique",
           "columns": [
             "date",
             "region",
-            "name"
+            "name",
+            "source"
           ],
           "isUnique": true
         }
@@ -385,6 +393,13 @@
         }
       },
       "indexes": {
+        "schedule_days_office_id_idx": {
+          "name": "schedule_days_office_id_idx",
+          "columns": [
+            "office_id"
+          ],
+          "isUnique": false
+        },
         "schedule_days_schedule_id_week_index_weekday_unique": {
           "name": "schedule_days_schedule_id_week_index_weekday_unique",
           "columns": [
