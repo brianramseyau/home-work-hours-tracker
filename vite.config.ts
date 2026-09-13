@@ -40,7 +40,13 @@ export default defineConfig({
 				'src/lib/components/ui/**', // vendored shadcn-svelte primitives (CLI-generated)
 				'src/**/*.d.ts',
 				'src/**/*.{test,spec}.ts',
-				'src/**/test-utils/**'
+				'src/**/test-utils/**',
+				// Declarative table shape only, no branching logic. Its `.references(() => ...)`
+				// thunks are unreachable from the app: drizzle only calls them when generating DDL
+				// (drizzle-kit, a separate CLI), never when applying pre-built migrations at
+				// runtime or running plain queries. Covered functionally by create.test.ts, which
+				// applies the real migration and checks `foreign_key_check`. See AGENTS.md §5.
+				'src/lib/server/db/schema.ts'
 			],
 			thresholds: { 100: true },
 			reporter: ['text', 'html', 'json', 'json-summary']

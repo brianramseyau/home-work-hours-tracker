@@ -1,8 +1,12 @@
 // Australian financial year helpers. A financial year runs 1 Jul – 30 Jun and is identified
 // by its start year: startYear 2026 is "FY27" (1 Jul 2026 – 30 Jun 2027).
-// Pure and string-based by design (no Date, no timezone). Phase 02 extends this module.
+// Pure and string-based by design (no Date, no timezone).
+
+import { daysBetween, eachDate, isWeekend, mondayOf } from './date';
 
 const ISO_DATE = /^(\d{4})-(\d{2})-\d{2}$/;
+const FY_LABEL = /^FY(\d{2})$/;
+const FY_SLUG = /^fy(\d{2})$/;
 
 /** The start year of the financial year containing `isoDate` (YYYY-MM-DD). */
 export function fyStartYear(isoDate: string): number {
@@ -23,9 +27,50 @@ export function fySlug(startYear: number): string {
 	return fyLabel(startYear).toLowerCase();
 }
 
+/**
+ * The start year encoded by a "FY27"-style label. Two-digit years are read as 2000s, which
+ * holds for the lifetime of this app (it stops being unambiguous in 2100).
+ */
+export function parseFyLabel(label: string): number {
+	const match = FY_LABEL.exec(label);
+	if (!match) throw new Error(`Expected a label like "FY27", got "${label}"`);
+	return 2000 + Number(match[1]) - 1;
+}
+
+/** The start year encoded by a "fy27"-style URL slug. */
+export function parseFySlug(slug: string): number {
+	const match = FY_SLUG.exec(slug);
+	if (!match) throw new Error(`Expected a slug like "fy27", got "${slug}"`);
+	return 2000 + Number(match[1]) - 1;
+}
+
 /** "Jul 2026 – Jun 2027". */
 export function fyRangeLabel(startYear: number): string {
 	return `Jul ${startYear} – Jun ${startYear + 1}`;
+}
+
+/** The financial year's inclusive date bounds. */
+export function fyBounds(startYear: number): { start: string; end: string } {
+	return { start: `${startYear}-07-01`, end: `${startYear + 1}-06-30` };
+}
+
+/**
+ * The week number of `isoDate` within its own financial year: 1 on 1 Jul, incrementing on
+ * every Monday (so the first, possibly short, week is week 1), reaching 53 at the FY's end.
+ */
+export function weekOfFy(isoDate: string): number {
+	const { start } = fyBounds(fyStartYear(isoDate));
+	return Math.floor(daysBetween(mondayOf(start), mondayOf(isoDate)) / 7) + 1;
+}
+
+/** Every date in the financial year, weekdays only unless `includeWeekends` is set. */
+export function datesInFy(
+	startYear: number,
+	options: { includeWeekends?: boolean } = {}
+): string[] {
+	const { start, end } = fyBounds(startYear);
+	const dates = eachDate(start, end);
+	return options.includeWeekends ? dates : dates.filter((date) => !isWeekend(date));
 }
 
 export interface FySummary {
