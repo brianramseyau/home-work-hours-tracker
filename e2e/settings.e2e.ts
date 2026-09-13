@@ -55,17 +55,17 @@ test('settings walkthrough: years, general hours, offices, schedule, holidays, w
 
 	// 4. Build an alternating-fortnight schedule, unless a version already exists.
 	await page.getByRole('tab', { name: 'Schedule' }).click();
-	if (
-		await page
-			.getByText('No schedule set yet — add one below.')
-			.isVisible()
-			.catch(() => false)
-	) {
+	const noScheduleYet = page.getByText('No schedule set yet — add one below.');
+	if (await noScheduleYet.isVisible().catch(() => false)) {
 		await page.getByRole('radio', { name: 'Alternating fortnight' }).click();
 		await expect(page.getByText('Week A', { exact: true })).toBeVisible();
 		await expect(page.getByText('Week B', { exact: true })).toBeVisible();
 		await submitAndWait(page, '?/schedule', page.getByRole('button', { name: 'Save schedule' }));
-		await expect(page.getByText('Alternating fortnight').first()).toBeVisible();
+		// Scoped to the saved-versions list, not the editor above it (whose own cycle-length
+		// toggle also carries this text, and would stay visible even if nothing were actually
+		// persisted, e.g. a 400 that submitAndWait's generic response wait wouldn't catch).
+		await expect(noScheduleYet).not.toBeVisible();
+		await expect(page.getByText(/^From \d{4}-\d{2}-\d{2}$/)).toBeVisible();
 	}
 
 	// 5. Add a custom holiday for FY27, unless it's already there.

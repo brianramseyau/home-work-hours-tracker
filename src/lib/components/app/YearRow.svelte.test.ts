@@ -1,5 +1,9 @@
 import { page } from 'vitest/browser';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('$app/state', () => import('$lib/test-utils/pageFormStub.svelte'));
+
+import { resetPageForm, setPageForm } from '$lib/test-utils/pageFormStub.svelte';
 import { render } from 'vitest-browser-svelte';
 import YearRow from './YearRow.svelte';
 
@@ -12,6 +16,10 @@ const baseYear = {
 	homeMinutes: 456,
 	claimCents: 532
 };
+
+beforeEach(() => {
+	resetPageForm();
+});
 
 describe('YearRow', () => {
 	it('shows the FY, rate, hours and claim', async () => {
@@ -54,11 +62,36 @@ describe('YearRow', () => {
 		expect(page.getByLabelText('Rate ($/hr)').elements()).toHaveLength(0);
 	});
 
-	it('closes the rate-edit form as soon as Save rate is clicked', async () => {
+	it('closes the rate-edit form once the save actually succeeds', async () => {
 		render(YearRow, { year: baseYear });
 		await page.getByRole('button', { name: 'Edit rate' }).click();
-		await page.getByRole('button', { name: 'Save rate' }).click();
-		expect(page.getByLabelText('Rate ($/hr)').elements()).toHaveLength(0);
+		await expect.element(page.getByLabelText('Rate ($/hr)')).toBeInTheDocument();
+
+		setPageForm({ form: 'updateRate', startYear: baseYear.startYear, success: true });
+		await expect.element(page.getByLabelText('Rate ($/hr)')).not.toBeInTheDocument();
+	});
+
+	it('keeps the rate-edit form open and shows the error when the save fails', async () => {
+		render(YearRow, { year: baseYear });
+		await page.getByRole('button', { name: 'Edit rate' }).click();
+
+		setPageForm({
+			form: 'updateRate',
+			startYear: baseYear.startYear,
+			errors: { startYear: ['Unfinalise this year before changing its rate.'] }
+		});
+		await expect
+			.element(page.getByRole('alert'))
+			.toHaveTextContent('Unfinalise this year before changing its rate.');
+		expect(page.getByLabelText('Rate ($/hr)').elements()).toHaveLength(1);
+	});
+
+	it('ignores a save result for a different year', async () => {
+		render(YearRow, { year: baseYear });
+		await page.getByRole('button', { name: 'Edit rate' }).click();
+
+		setPageForm({ form: 'updateRate', startYear: baseYear.startYear + 1, success: true });
+		expect(page.getByLabelText('Rate ($/hr)').elements()).toHaveLength(1);
 	});
 
 	it('offers to finalise an open year, and to unfinalise a finalised one', async () => {

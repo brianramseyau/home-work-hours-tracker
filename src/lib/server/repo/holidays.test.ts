@@ -16,7 +16,7 @@ beforeEach(() => {
 
 describe('replaceBundledHolidays', () => {
 	it('seeds bundled rows for a region', () => {
-		replaceBundledHolidays(db, 'AU-VIC', [
+		replaceBundledHolidays(db, 'AU-VIC', 2026, [
 			{ date: '2026-12-25', name: 'Christmas Day' },
 			{ date: '2026-11-03', name: 'Melbourne Cup' }
 		]);
@@ -25,8 +25,8 @@ describe('replaceBundledHolidays', () => {
 		expect(rows.every((row) => row.source === 'bundled')).toBe(true);
 	});
 
-	it('replaces the bundled rows without touching custom ones', () => {
-		replaceBundledHolidays(db, 'AU-VIC', [{ date: '2026-12-25', name: 'Christmas Day' }]);
+	it('replaces the bundled rows for the same FY without touching custom ones', () => {
+		replaceBundledHolidays(db, 'AU-VIC', 2026, [{ date: '2026-12-25', name: 'Christmas Day' }]);
 		addCustomHoliday(db, {
 			date: '2026-09-14',
 			name: 'Office Location 1 anniversary',
@@ -34,7 +34,7 @@ describe('replaceBundledHolidays', () => {
 			repeatsYearly: true
 		});
 
-		replaceBundledHolidays(db, 'AU-VIC', [{ date: '2027-01-01', name: "New Year's Day" }]);
+		replaceBundledHolidays(db, 'AU-VIC', 2026, [{ date: '2027-01-01', name: "New Year's Day" }]);
 
 		const rows = listHolidays(db, 'AU-VIC');
 		expect(rows.map((row) => row.name).sort()).toEqual([
@@ -44,7 +44,7 @@ describe('replaceBundledHolidays', () => {
 	});
 
 	it('handles an empty bundle', () => {
-		replaceBundledHolidays(db, 'AU-VIC', []);
+		replaceBundledHolidays(db, 'AU-VIC', 2026, []);
 		expect(listHolidays(db, 'AU-VIC')).toEqual([]);
 	});
 
@@ -57,12 +57,35 @@ describe('replaceBundledHolidays', () => {
 		});
 
 		expect(() =>
-			replaceBundledHolidays(db, 'AU-VIC', [{ date: '2026-12-25', name: 'Christmas Day' }])
+			replaceBundledHolidays(db, 'AU-VIC', 2026, [{ date: '2026-12-25', name: 'Christmas Day' }])
 		).not.toThrow();
 
 		const rows = listHolidays(db, 'AU-VIC');
 		expect(rows).toHaveLength(2);
 		expect(rows.map((row) => row.source).sort()).toEqual(['bundled', 'custom']);
+	});
+
+	it('leaves bundled rows in other financial years untouched', () => {
+		replaceBundledHolidays(db, 'AU-VIC', 2026, [{ date: '2026-12-25', name: 'Christmas Day' }]);
+		replaceBundledHolidays(db, 'AU-VIC', 2027, [{ date: '2028-01-01', name: "New Year's Day" }]);
+
+		const rows = listHolidays(db, 'AU-VIC');
+		expect(rows.map((row) => row.name).sort()).toEqual(['Christmas Day', "New Year's Day"]);
+	});
+
+	it('carries a bundled row’s disabled flag across a reseed of the same FY', () => {
+		replaceBundledHolidays(db, 'AU-VIC', 2026, [{ date: '2026-12-25', name: 'Christmas Day' }]);
+		const christmas = listHolidays(db, 'AU-VIC')[0];
+		setHolidayDisabled(db, christmas.id, true);
+
+		replaceBundledHolidays(db, 'AU-VIC', 2026, [
+			{ date: '2026-12-25', name: 'Christmas Day' },
+			{ date: '2026-11-03', name: 'Melbourne Cup' }
+		]);
+
+		const rows = listHolidays(db, 'AU-VIC');
+		expect(rows.find((row) => row.name === 'Christmas Day')?.disabled).toBe(true);
+		expect(rows.find((row) => row.name === 'Melbourne Cup')?.disabled).toBe(false);
 	});
 });
 

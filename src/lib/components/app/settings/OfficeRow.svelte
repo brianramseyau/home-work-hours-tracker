@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { page } from '$app/state';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
+	import { firstFieldError } from '$lib/core/validation';
 
 	interface OfficeData {
 		id: number;
@@ -15,6 +17,26 @@
 	let { office }: { office: OfficeData } = $props();
 
 	let editing = $state(false);
+
+	// This row's own outcome from `?/officeUpdate`, scoped by id since `page.form` is shared by
+	// every OfficeRow on the page.
+	const result = $derived.by(() => {
+		const form = page.form as {
+			form?: string;
+			id?: number;
+			success?: boolean;
+			errors?: Record<string, string[] | undefined>;
+		} | null;
+		return form && form.form === 'officeUpdate' && form.id === office.id ? form : null;
+	});
+	const error = $derived(result ? firstFieldError(result.errors) : null);
+
+	// Closed from the actual result, not optimistically on click: a validation failure (a blank
+	// or duplicate name) needs to keep the form open so the error above is visible and the
+	// user's edit isn't silently discarded.
+	$effect(() => {
+		if (result?.success) editing = false;
+	});
 </script>
 
 <div class="flex flex-col gap-2 border-b py-4 last:border-b-0">
@@ -34,10 +56,13 @@
 					class="w-64"
 				/>
 			</div>
-			<Button type="submit" size="sm" onclick={() => (editing = false)}>Save office</Button>
+			<Button type="submit" size="sm">Save office</Button>
 			<Button type="button" variant="ghost" size="sm" onclick={() => (editing = false)}>
 				Cancel
 			</Button>
+			{#if error}
+				<p class="w-full text-sm text-destructive" role="alert">{error}</p>
+			{/if}
 		</form>
 	{:else}
 		<div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">

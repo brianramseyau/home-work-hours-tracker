@@ -1,5 +1,9 @@
 import { page } from 'vitest/browser';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('$app/state', () => import('$lib/test-utils/pageFormStub.svelte'));
+
+import { resetPageForm, setPageForm } from '$lib/test-utils/pageFormStub.svelte';
 import { render } from 'vitest-browser-svelte';
 import ScheduleEditor from './ScheduleEditor.svelte';
 
@@ -7,6 +11,10 @@ const offices = [
 	{ id: 1, name: 'Office Location 1' },
 	{ id: 2, name: 'Office Location 2' }
 ];
+
+beforeEach(() => {
+	resetPageForm();
+});
 
 describe('ScheduleEditor', () => {
 	it('defaults to every week, home on weekdays only', async () => {
@@ -28,6 +36,14 @@ describe('ScheduleEditor', () => {
 		await page.getByRole('radio', { name: 'Alternating fortnight' }).click();
 		await expect.element(page.getByText('Week A', { exact: true })).toBeInTheDocument();
 		await expect.element(page.getByText('Week B', { exact: true })).toBeInTheDocument();
+	});
+
+	it('ignores the cycle-length toggle deselecting down to no value', async () => {
+		render(ScheduleEditor, { offices, includeWeekends: false, today: '2026-09-14' });
+		const everyWeekToggle = page.getByRole('radio', { name: 'Every week' });
+		await everyWeekToggle.click(); // already active; bits-ui reports this as a deselect
+		// The cycle is still "every week": no second week row appears.
+		expect(page.getByText('Week A', { exact: true }).elements()).toHaveLength(0);
 	});
 
 	it('shows an office picker once a day is set to office, defaulting to the first office', async () => {
@@ -92,10 +108,9 @@ describe('ScheduleEditor', () => {
 			.toHaveAttribute('type', 'submit');
 	});
 
-	it('shows a placeholder instead of a picker when there are no offices yet', async () => {
+	it('disables the office mode toggle when there are no offices yet', async () => {
 		render(ScheduleEditor, { offices: [], includeWeekends: false, today: '2026-09-14' });
-		await page.getByRole('radio', { name: 'Mon office' }).click();
-		await expect.element(page.getByText('No offices yet')).toBeInTheDocument();
+		await expect.element(page.getByRole('radio', { name: 'Mon office' })).toBeDisabled();
 	});
 
 	it('does not clear the effective-from field if the browser resets the form', async () => {
@@ -113,5 +128,16 @@ describe('ScheduleEditor', () => {
 		await expect
 			.element(page.getByRole('button', { name: 'Save schedule' }))
 			.toHaveAttribute('type', 'submit');
+	});
+
+	it('shows a field error message after a failed save', async () => {
+		setPageForm({
+			form: 'schedule',
+			errors: { anchorMonday: ['The anchor date must be a Monday'] }
+		});
+		render(ScheduleEditor, { offices, includeWeekends: false, today: '2026-09-14' });
+		await expect
+			.element(page.getByRole('alert'))
+			.toHaveTextContent('The anchor date must be a Monday');
 	});
 });

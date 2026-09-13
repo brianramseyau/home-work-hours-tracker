@@ -2,10 +2,12 @@
 	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import { enhance } from '$app/forms';
+	import { page } from '$app/state';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { fySummary } from '$lib/core/fy';
+	import { firstFieldError } from '$lib/core/validation';
 	import HolidayRow from './HolidayRow.svelte';
 
 	interface HolidayData {
@@ -26,6 +28,12 @@
 
 	const previousFy = $derived(fySummary(fy.startYear - 1));
 	const nextFy = $derived(fySummary(fy.startYear + 1));
+
+	const error = $derived(
+		page.form && (page.form as { form?: string }).form === 'holidayCreate'
+			? firstFieldError((page.form as { errors?: Record<string, string[] | undefined> }).errors)
+			: null
+	);
 </script>
 
 <div class="max-w-lg">
@@ -83,5 +91,8 @@
 			<Label for="new-holiday-repeats">Repeats every year</Label>
 		</div>
 		<Button type="submit">Add holiday</Button>
+		{#if error}
+			<p class="w-full text-sm text-destructive" role="alert">{error}</p>
+		{/if}
 	</form>
 </div>

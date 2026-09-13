@@ -86,7 +86,7 @@ describe('ensurePrefilled', () => {
 		homeWeekdaySchedule('2026-07-01', '2026-06-29');
 		updateSettings(db, { holidayRegion: 'AU-VIC' });
 		// Melbourne Cup, 2026-11-03, is a Tuesday the schedule would otherwise call home.
-		replaceBundledHolidays(db, 'AU-VIC', [{ date: '2026-11-03', name: 'Melbourne Cup' }]);
+		replaceBundledHolidays(db, 'AU-VIC', 2026, [{ date: '2026-11-03', name: 'Melbourne Cup' }]);
 
 		ensurePrefilled(db, '2026-11-03');
 		expect(getDay(db, '2026-11-03')).toMatchObject({ kind: 'public_holiday' });

@@ -120,3 +120,42 @@ Standard-hours changes call `replanFrom(current FY start)`. Only `prefill` rows 
 - **Holiday tab's FY navigation** is prev/next only (no jump-to-year picker), matching what the
   page actually needs for now; `/years` already lists every year for a direct jump if one is
   ever wanted there.
+- **PR #2's Kilo review round, fixed post-merge-checklist, pre-merge:**
+  - **Critical:** `/settings`' `load` reseeded bundled holidays for the whole region on every
+    view, deleting every other FY's bundled rows and resetting any bundled holiday's `disabled`
+    flag. `replaceBundledHolidays` now takes the FY's `startYear` and scopes its delete/insert to
+    that FY's date range, carrying a matched row's `disabled` flag across the reseed.
+  - Duplicate office names, schedule effective-from dates and custom holidays threw an uncaught
+    UNIQUE constraint error (a 500) instead of a field error — `officeCreate`/`officeUpdate`/
+    `schedule`/`holidayCreate` now catch it via a new `isUniqueConstraintError` helper
+    (`$lib/server/db/errors.ts`) and return `fail(400, …)`, re-throwing anything else.
+  - `Number('')` is `0`, not `NaN`: a blanked rate or standard-break field silently saved as
+    zero. Both `parseDollarsToCents` (`/years`) and the new `parseNumberField` (`core/validation`,
+    used by `/settings`' `general` action) now reject a blank/whitespace string before conversion.
+  - `updateRate` had no `finalisedAt` guard, so a finalised year's rate could still be changed —
+    now checked and rejected with a field error.
+  - `OfficeRow` and `YearRow`'s edit forms closed on click regardless of the server's response,
+    silently discarding a validation failure. Both now close only from the actual `use:enhance`
+    result (`$app/state`'s `page.form`, scoped per row by id/startYear since it's shared page-wide)
+    and show the failure inline instead.
+  - The same "results never surfaced" gap applied to `GeneralTab`, `OfficesTab`, `ScheduleEditor`
+    and `HolidaysTab`'s add-forms — each now renders `page.form`'s first field error via a new
+    `firstFieldError` helper (`core/validation`). A reactive `$app/state` test stub
+    (`$lib/test-utils/pageFormStub.svelte.ts`, excluded from coverage) drives this in component
+    tests without a real server round trip.
+  - `ScheduleEditor`'s cycle-length `ToggleGroup` used `bind:value`, so re-clicking the active
+    option (a bits-ui deselect) could blank `cycleWeeks`; switched to `onValueChange` with the
+    same deselect guard already used by the mode/office groups.
+  - An empty `standardBreakMinutes` binds to `null`, not `0` — `GeneralTab`'s preview and its
+    explanatory comment were wrong; both fixed, and the field is now excluded from the preview
+    when cleared.
+  - The schedule editor could still persist `{ mode: 'office', officeId: null }` when there were
+    no offices. The "Office" toggle is now `disabled` whenever `offices.length === 0`, which also
+    made the old "No offices yet" placeholder branch dead code — removed.
+  - Two small fixes: `YearRow`'s `<h3>` skipped a heading level under `/years`' `<h1>` (now
+    `<h2>`, matching the same fix already made to `ScheduleTab`), and its rate/hours text carried
+    the same hidden-branch pattern as elsewhere (template-literal fix).
+  - Two test-quality fixes: a settings `load` test now asserts a bundled holiday from one FY
+    survives viewing another (the regression test for the critical fix above), and the E2E
+    schedule-save assertion is now scoped to the saved-versions list instead of matching text that
+    the always-visible editor also carries (which could pass even if nothing had actually saved).

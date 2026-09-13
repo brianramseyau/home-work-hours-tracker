@@ -146,6 +146,33 @@ describe('actions.updateRate', () => {
 		);
 		expect(result).toMatchObject({ status: 400 });
 	});
+
+	it('fails on a blank rate, rather than silently zeroing it', async () => {
+		createYear(db, { startYear: 2026, rateCentsPerHour: 70 });
+		const { actions } = await import('./+page.server');
+		const result = await actions.updateRate(
+			actionEvent({ startYear: '2026', rateDollars: '  ', rateNote: '' })
+		);
+		expect(result).toMatchObject({ status: 400 });
+
+		const { getYear } = await import('$lib/server/repo/years');
+		expect(getYear(db, 2026)?.rateCentsPerHour).toBe(70);
+	});
+
+	it('refuses to change the rate of a finalised year', async () => {
+		const { finaliseYear } = await import('$lib/server/repo/years');
+		createYear(db, { startYear: 2026, rateCentsPerHour: 70 });
+		finaliseYear(db, 2026, '2026-09-14');
+
+		const { actions } = await import('./+page.server');
+		const result = await actions.updateRate(
+			actionEvent({ startYear: '2026', rateDollars: '0.75', rateNote: '' })
+		);
+		expect(result).toMatchObject({ status: 400 });
+
+		const { getYear } = await import('$lib/server/repo/years');
+		expect(getYear(db, 2026)?.rateCentsPerHour).toBe(70);
+	});
 });
 
 describe('actions.finalise and unfinalise', () => {

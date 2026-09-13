@@ -1,7 +1,15 @@
 import { page } from 'vitest/browser';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('$app/state', () => import('$lib/test-utils/pageFormStub.svelte'));
+
+import { resetPageForm, setPageForm } from '$lib/test-utils/pageFormStub.svelte';
 import { render } from 'vitest-browser-svelte';
 import OfficeRow from './OfficeRow.svelte';
+
+beforeEach(() => {
+	resetPageForm();
+});
 
 const office = {
 	id: 1,
@@ -46,10 +54,35 @@ describe('OfficeRow', () => {
 		expect(page.getByLabelText('Name').elements()).toHaveLength(0);
 	});
 
-	it('closes the rename form as soon as Save office is clicked', async () => {
+	it('closes the rename form once the save actually succeeds', async () => {
 		render(OfficeRow, { office });
 		await page.getByRole('button', { name: 'Rename' }).click();
-		await page.getByRole('button', { name: 'Save office' }).click();
-		expect(page.getByLabelText('Name').elements()).toHaveLength(0);
+		await expect.element(page.getByLabelText('Name')).toBeInTheDocument();
+
+		setPageForm({ form: 'officeUpdate', id: office.id, success: true });
+		await expect.element(page.getByLabelText('Name')).not.toBeInTheDocument();
+	});
+
+	it('keeps the rename form open and shows the error when the save fails', async () => {
+		render(OfficeRow, { office });
+		await page.getByRole('button', { name: 'Rename' }).click();
+
+		setPageForm({
+			form: 'officeUpdate',
+			id: office.id,
+			errors: { name: ['An office already has this name.'] }
+		});
+		await expect
+			.element(page.getByRole('alert'))
+			.toHaveTextContent('An office already has this name.');
+		expect(page.getByLabelText('Name').elements()).toHaveLength(1);
+	});
+
+	it('ignores a save result for a different office', async () => {
+		render(OfficeRow, { office });
+		await page.getByRole('button', { name: 'Rename' }).click();
+
+		setPageForm({ form: 'officeUpdate', id: office.id + 1, success: true });
+		expect(page.getByLabelText('Name').elements()).toHaveLength(1);
 	});
 });

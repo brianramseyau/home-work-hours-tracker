@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	daySchema,
+	firstFieldError,
 	holidaySchema,
 	leaveRangeSchema,
 	officeSchema,
@@ -233,5 +234,23 @@ describe('leaveRangeSchema', () => {
 		expect(
 			leaveRangeSchema.safeParse({ from: '2026-12-31', to: '2026-12-24', kind: 'leave' }).success
 		).toBe(false);
+	});
+});
+
+describe('firstFieldError', () => {
+	it('returns null for no errors', () => {
+		expect(firstFieldError(undefined)).toBeNull();
+		expect(firstFieldError(null)).toBeNull();
+	});
+
+	it('returns null when every field has no messages', () => {
+		expect(firstFieldError({ name: undefined })).toBeNull();
+	});
+
+	it('returns the first message, in field-declaration order', () => {
+		const parsed = officeSchema.safeParse({ name: '', address: null });
+		expect(firstFieldError(parsed.success ? undefined : parsed.error.flatten().fieldErrors)).toBe(
+			'Name the office'
+		);
 	});
 });

@@ -1,9 +1,16 @@
 import { env } from '$env/dynamic/private';
 import { fail } from '@sveltejs/kit';
 import { fyBounds, fyStartYear, fySummary, parseFySlug } from '$lib/core/fy';
-import { holidaySchema, officeSchema, scheduleSchema, settingsSchema } from '$lib/core/validation';
+import {
+	holidaySchema,
+	officeSchema,
+	parseNumberField,
+	scheduleSchema,
+	settingsSchema
+} from '$lib/core/validation';
 import { today } from '$lib/server/clock';
 import { db } from '$lib/server/db';
+import { isUniqueConstraintError } from '$lib/server/db/errors';
 import { replanFrom } from '$lib/server/autoPrefill';
 import { bundledHolidays, projectIntoFy } from '$lib/server/holidays';
 import {
@@ -30,7 +37,7 @@ function currentFyStartYear(): number {
 
 /** Keeps the bundled holiday rows for `region` in sync with date-holidays, for the given FY. */
 function reseedBundled(region: string, startYear: number) {
-	replaceBundledHolidays(db, region, bundledHolidays(region, startYear));
+	replaceBundledHolidays(db, region, startYear, bundledHolidays(region, startYear));
 }
 
 export const load: PageServerLoad = ({ url }) => {
@@ -80,7 +87,7 @@ export const actions: Actions = {
 			holidayRegion: formData.get('holidayRegion'),
 			standardStart: formData.get('standardStart'),
 			standardEnd: formData.get('standardEnd'),
-			standardBreakMinutes: Number(formData.get('standardBreakMinutes')),
+			standardBreakMinutes: parseNumberField(formData.get('standardBreakMinutes')),
 			includeWeekends: formData.get('includeWeekends') === 'on'
 		});
 		if (!parsed.success) {
@@ -103,7 +110,15 @@ export const actions: Actions = {
 		if (!parsed.success) {
 			return fail(400, { form: 'officeCreate', errors: parsed.error.flatten().fieldErrors });
 		}
-		createOffice(db, parsed.data);
+		try {
+			createOffice(db, parsed.data);
+		} catch (error) {
+			if (!isUniqueConstraintError(error)) throw error;
+			return fail(400, {
+				form: 'officeCreate',
+				errors: { name: ['An office already has this name.'] }
+			});
+		}
 		return { form: 'officeCreate', success: true };
 	},
 
@@ -116,10 +131,19 @@ export const actions: Actions = {
 			address: typeof addressRaw === 'string' && addressRaw.trim() ? addressRaw.trim() : null
 		});
 		if (!parsed.success) {
-			return fail(400, { form: 'officeUpdate', errors: parsed.error.flatten().fieldErrors });
+			return fail(400, { form: 'officeUpdate', id, errors: parsed.error.flatten().fieldErrors });
 		}
-		updateOffice(db, id, parsed.data);
-		return { form: 'officeUpdate', success: true };
+		try {
+			updateOffice(db, id, parsed.data);
+		} catch (error) {
+			if (!isUniqueConstraintError(error)) throw error;
+			return fail(400, {
+				form: 'officeUpdate',
+				id,
+				errors: { name: ['An office already has this name.'] }
+			});
+		}
+		return { form: 'officeUpdate', id, success: true };
 	},
 
 	officeArchive: async ({ request }) => {
@@ -156,7 +180,15 @@ export const actions: Actions = {
 			return fail(400, { form: 'schedule', errors: parsed.error.flatten().fieldErrors });
 		}
 
-		createSchedule(db, parsed.data);
+		try {
+			createSchedule(db, parsed.data);
+		} catch (error) {
+			if (!isUniqueConstraintError(error)) throw error;
+			return fail(400, {
+				form: 'schedule',
+				errors: { effectiveFrom: ['A schedule already starts on this date.'] }
+			});
+		}
 		replanFrom(db, parsed.data.effectiveFrom);
 		return { form: 'schedule', success: true };
 	},
@@ -183,7 +215,15 @@ export const actions: Actions = {
 		if (!parsed.success) {
 			return fail(400, { form: 'holidayCreate', errors: parsed.error.flatten().fieldErrors });
 		}
-		addCustomHoliday(db, parsed.data);
+		try {
+			addCustomHoliday(db, parsed.data);
+		} catch (error) {
+			if (!isUniqueConstraintError(error)) throw error;
+			return fail(400, {
+				form: 'holidayCreate',
+				errors: { name: ['This holiday is already recorded on this date.'] }
+			});
+		}
 		replanFrom(db, fyBounds(currentFyStartYear()).start);
 		return { form: 'holidayCreate', success: true };
 	},

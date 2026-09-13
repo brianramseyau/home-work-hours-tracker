@@ -149,6 +149,32 @@ export const leaveRangeSchema = z
 		path: ['to']
 	});
 
+/**
+ * Parses a form field expected to hold a number, treating a blank or whitespace-only string as
+ * invalid rather than the `0` that `Number('')` would otherwise silently produce — the schema's
+ * `z.number()` then rejects the resulting `NaN` with a proper field error instead of the field
+ * ending up saved as a real (and wrong) zero.
+ */
+export function parseNumberField(value: FormDataEntryValue | null): number {
+	if (typeof value !== 'string' || value.trim() === '') return NaN;
+	return Number(value);
+}
+
+/**
+ * The first message out of a zod `flatten().fieldErrors` object, in field-declaration order —
+ * enough for a form to show one line explaining why its last submit failed, without listing
+ * every field's errors separately.
+ */
+export function firstFieldError(
+	errors: Record<string, string[] | undefined> | null | undefined
+): string | null {
+	if (!errors) return null;
+	for (const messages of Object.values(errors)) {
+		if (messages && messages.length > 0) return messages[0];
+	}
+	return null;
+}
+
 export type SettingsInput = z.infer<typeof settingsSchema>;
 export type YearInput = z.infer<typeof yearSchema>;
 export type OfficeInput = z.infer<typeof officeSchema>;

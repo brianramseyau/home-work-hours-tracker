@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { page } from '$app/state';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
+	import { firstFieldError } from '$lib/core/validation';
 	import OfficeRow from './OfficeRow.svelte';
 
 	interface OfficeData {
@@ -13,6 +15,12 @@
 	}
 
 	let { offices }: { offices: OfficeData[] } = $props();
+
+	const error = $derived(
+		page.form && (page.form as { form?: string }).form === 'officeCreate'
+			? firstFieldError((page.form as { errors?: Record<string, string[] | undefined> }).errors)
+			: null
+	);
 </script>
 
 <div class="max-w-lg">
@@ -43,5 +51,8 @@
 			<Input id="new-office-address" name="address" class="w-64" />
 		</div>
 		<Button type="submit">Add office</Button>
+		{#if error}
+			<p class="w-full text-sm text-destructive" role="alert">{error}</p>
+		{/if}
 	</form>
 </div>

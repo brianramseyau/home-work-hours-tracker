@@ -9,6 +9,7 @@ import { listRange } from '$lib/server/repo/days';
 import {
 	createYear,
 	finaliseYear,
+	getYear,
 	listYears,
 	unfinaliseYear,
 	updateYearRate
@@ -47,7 +48,9 @@ export const load: PageServerLoad = () => {
 
 /** Parses a "0.70"-style dollar string into integer cents, or null if it isn't a number. */
 function parseDollarsToCents(value: FormDataEntryValue | null): number | null {
-	if (typeof value !== 'string') return null;
+	// `Number('')` and `Number('  ')` are both 0, not NaN, so a blank field must be rejected
+	// before the conversion — otherwise clearing the field would silently zero the rate.
+	if (typeof value !== 'string' || value.trim() === '') return null;
 	const dollars = Number(value);
 	if (!Number.isFinite(dollars)) return null;
 	return Math.round(dollars * 100);
@@ -81,8 +84,18 @@ export const actions: Actions = {
 		const parsed = yearSchema.safeParse({ startYear, rateCentsPerHour, rateNote });
 		if (!parsed.success) {
 			return fail(400, {
+				form: 'updateRate',
 				startYear,
 				errors: parsed.error.flatten().fieldErrors
+			});
+		}
+
+		const year = getYear(db, parsed.data.startYear);
+		if (year?.finalisedAt) {
+			return fail(400, {
+				form: 'updateRate',
+				startYear,
+				errors: { startYear: ['Unfinalise this year before changing its rate.'] }
 			});
 		}
 
@@ -90,7 +103,7 @@ export const actions: Actions = {
 			rateCentsPerHour: parsed.data.rateCentsPerHour,
 			rateNote: parsed.data.rateNote
 		});
-		return { success: true };
+		return { form: 'updateRate', startYear: parsed.data.startYear, success: true };
 	},
 
 	finalise: async ({ request }) => {

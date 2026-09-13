@@ -1,7 +1,15 @@
 import { page } from 'vitest/browser';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('$app/state', () => import('$lib/test-utils/pageFormStub.svelte'));
+
+import { resetPageForm, setPageForm } from '$lib/test-utils/pageFormStub.svelte';
 import { render } from 'vitest-browser-svelte';
 import GeneralTab from './GeneralTab.svelte';
+
+beforeEach(() => {
+	resetPageForm();
+});
 
 const settings = {
 	fullName: null as string | null,
@@ -80,5 +88,33 @@ describe('GeneralTab', () => {
 		await expect
 			.element(page.getByText('Enter a valid start, end and break to see the daily total.'))
 			.toBeInTheDocument();
+	});
+
+	it('shows guidance instead of a preview when the break is cleared', async () => {
+		// An empty number input binds to null, not 0 — a cleared break must not compute as a
+		// valid (zero-minute) block.
+		render(GeneralTab, { settings });
+		const breakInput = page.getByLabelText('Break (min)');
+		await breakInput.fill('');
+		await expect
+			.element(page.getByText('Enter a valid start, end and break to see the daily total.'))
+			.toBeInTheDocument();
+	});
+
+	it('shows a field error message after a failed save', async () => {
+		setPageForm({
+			form: 'general',
+			errors: { standardStart: ['Expected a time in HH:mm format'] }
+		});
+		render(GeneralTab, { settings });
+		await expect
+			.element(page.getByRole('alert'))
+			.toHaveTextContent('Expected a time in HH:mm format');
+	});
+
+	it('does not show an error left over from a different form', async () => {
+		setPageForm({ form: 'officeCreate', errors: { name: ['Name the office'] } });
+		render(GeneralTab, { settings });
+		expect(page.getByRole('alert').elements()).toHaveLength(0);
 	});
 });

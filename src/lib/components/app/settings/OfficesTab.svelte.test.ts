@@ -1,7 +1,15 @@
 import { page } from 'vitest/browser';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('$app/state', () => import('$lib/test-utils/pageFormStub.svelte'));
+
+import { resetPageForm, setPageForm } from '$lib/test-utils/pageFormStub.svelte';
 import { render } from 'vitest-browser-svelte';
 import OfficesTab from './OfficesTab.svelte';
+
+beforeEach(() => {
+	resetPageForm();
+});
 
 describe('OfficesTab', () => {
 	it('invites adding the first office when there are none', async () => {
@@ -28,5 +36,13 @@ describe('OfficesTab', () => {
 		await expect
 			.element(page.getByRole('button', { name: 'Add office' }))
 			.toHaveAttribute('type', 'submit');
+	});
+
+	it('shows a field error message after a failed add', async () => {
+		setPageForm({ form: 'officeCreate', errors: { name: ['An office already has this name.'] } });
+		render(OfficesTab, { offices: [] });
+		await expect
+			.element(page.getByRole('alert'))
+			.toHaveTextContent('An office already has this name.');
 	});
 });

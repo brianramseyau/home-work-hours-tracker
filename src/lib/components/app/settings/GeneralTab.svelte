@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { enhance } from '$app/forms';
+	import { page } from '$app/state';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { Switch } from '$lib/components/ui/switch';
 	import { blockMinutes, formatHours, validateBlock } from '$lib/core/time';
+	import { firstFieldError } from '$lib/core/validation';
 
 	interface SettingsData {
 		fullName: string | null;
@@ -21,16 +23,22 @@
 	// Seeded once from the loaded settings; the form then owns this draft state until submitted.
 	let standardStart = $state(untrack(() => settings.standardStart));
 	let standardEnd = $state(untrack(() => settings.standardEnd));
-	let standardBreakMinutes = $state(untrack(() => settings.standardBreakMinutes));
+	let standardBreakMinutes = $state<number | null>(untrack(() => settings.standardBreakMinutes));
 	let includeWeekends = $state(untrack(() => settings.includeWeekends));
 
-	// A number input's bound value is always a real number (an empty field binds to 0), so
-	// there's no not-a-number case to guard here — only a genuinely invalid time span.
+	// A number input's bound value is `null`, not 0, when the field is empty — clearing the
+	// break shouldn't make the preview report a valid full-day total.
 	const preview = $derived.by(() => {
-		if (!standardStart || !standardEnd) return null;
+		if (!standardStart || !standardEnd || standardBreakMinutes === null) return null;
 		const block = { start: standardStart, end: standardEnd, breakMinutes: standardBreakMinutes };
 		return validateBlock(block) === null ? formatHours(blockMinutes(block)) : null;
 	});
+
+	const error = $derived(
+		page.form && (page.form as { form?: string }).form === 'general'
+			? firstFieldError((page.form as { errors?: Record<string, string[] | undefined> }).errors)
+			: null
+	);
 </script>
 
 <form
@@ -113,6 +121,10 @@
 		<Switch id="includeWeekends" name="includeWeekends" bind:checked={includeWeekends} />
 		<Label for="includeWeekends">Include weekends</Label>
 	</div>
+
+	{#if error}
+		<p class="text-sm text-destructive" role="alert">{error}</p>
+	{/if}
 
 	<Button type="submit" class="self-start">Save general settings</Button>
 </form>

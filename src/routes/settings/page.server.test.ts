@@ -2,8 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PageData } from './$types';
 import { createDb, type Db } from '$lib/server/db/create';
 import { getDay, upsertDay } from '$lib/server/repo/days';
+import * as officesRepo from '$lib/server/repo/offices';
 import { createOffice, listOffices } from '$lib/server/repo/offices';
+import * as holidaysRepo from '$lib/server/repo/holidays';
 import { addCustomHoliday, listHolidays } from '$lib/server/repo/holidays';
+import * as schedulesRepo from '$lib/server/repo/schedules';
 import { listSchedules } from '$lib/server/repo/schedules';
 import { getSettings } from '$lib/server/repo/settings';
 
@@ -111,6 +114,28 @@ describe('load', () => {
 		const nextFy = asData(load(actionEvent({}, 'http://localhost/settings?fy=fy28')));
 		expect(nextFy.holidays.some((h) => h.name === 'One-off')).toBe(false);
 	});
+
+	it('keeps FY27’s bundled holidays after viewing FY28', async () => {
+		const { load } = await import('./+page.server');
+		asData(load(actionEvent()));
+		asData(load(actionEvent({}, 'http://localhost/settings?fy=fy28')));
+
+		const fy27Again = asData(load(actionEvent()));
+		expect(fy27Again.holidays.some((h) => h.name === 'Melbourne Cup')).toBe(true);
+	});
+
+	it('keeps a bundled holiday disabled across a reseed on the next load', async () => {
+		const { load } = await import('./+page.server');
+		asData(load(actionEvent()));
+
+		const { setHolidayDisabled } = await import('$lib/server/repo/holidays');
+		const cup = listHolidays(db, 'AU-VIC').find((h) => h.name === 'Melbourne Cup');
+		setHolidayDisabled(db, cup!.id, true);
+
+		const result = asData(load(actionEvent()));
+		const cupAgain = result.holidays.find((h) => h.name === 'Melbourne Cup');
+		expect(cupAgain?.disabled).toBe(true);
+	});
 });
 
 describe('actions.general', () => {
@@ -176,6 +201,14 @@ describe('actions.general', () => {
 		expect(result).toMatchObject({ status: 400 });
 	});
 
+	it('fails on a blank break, rather than silently saving a 0-minute break', async () => {
+		const { actions } = await import('./+page.server');
+		const result = await actions.general(
+			actionEvent(validGeneralFields({ standardBreakMinutes: '  ' }))
+		);
+		expect(result).toMatchObject({ status: 400 });
+	});
+
 	it('clears the full name when left blank', async () => {
 		const { actions } = await import('./+page.server');
 		await actions.general(actionEvent(validGeneralFields({ fullName: '' })));
@@ -230,6 +263,50 @@ describe('office actions', () => {
 			actionEvent({ id: String(office.id), name: '  ', address: '' })
 		);
 		expect(result).toMatchObject({ status: 400 });
+	});
+
+	it('fails to create an office with a name already in use, instead of throwing', async () => {
+		createOffice(db, { name: 'Office Location 1' });
+		const { actions } = await import('./+page.server');
+		const result = await actions.officeCreate(actionEvent({ name: 'Office Location 1' }));
+		expect(result).toMatchObject({
+			status: 400,
+			data: { errors: { name: ['An office already has this name.'] } }
+		});
+	});
+
+	it('fails to rename an office to a name already in use, instead of throwing', async () => {
+		createOffice(db, { name: 'Office Location 1' });
+		const office = createOffice(db, { name: 'Office Location 2' });
+		const { actions } = await import('./+page.server');
+		const result = await actions.officeUpdate(
+			actionEvent({ id: String(office.id), name: 'Office Location 1', address: '' })
+		);
+		expect(result).toMatchObject({
+			status: 400,
+			data: { errors: { name: ['An office already has this name.'] } }
+		});
+	});
+
+	it('re-throws a create failure that is not a name collision', async () => {
+		vi.spyOn(officesRepo, 'createOffice').mockImplementationOnce(() => {
+			throw new Error('disk full');
+		});
+		const { actions } = await import('./+page.server');
+		await expect(actions.officeCreate(actionEvent({ name: 'Office Location 1' }))).rejects.toThrow(
+			'disk full'
+		);
+	});
+
+	it('re-throws an update failure that is not a name collision', async () => {
+		const office = createOffice(db, { name: 'Office Location 1' });
+		vi.spyOn(officesRepo, 'updateOffice').mockImplementationOnce(() => {
+			throw new Error('disk full');
+		});
+		const { actions } = await import('./+page.server');
+		await expect(
+			actions.officeUpdate(actionEvent({ id: String(office.id), name: 'Renamed', address: '' }))
+		).rejects.toThrow('disk full');
 	});
 
 	it('archives and unarchives an office', async () => {
@@ -294,6 +371,41 @@ describe('schedule actions', () => {
 		expect(result).toMatchObject({ status: 400 });
 	});
 
+	it('fails to save a second schedule with the same effective date, instead of throwing', async () => {
+		const { actions } = await import('./+page.server');
+		const fields = {
+			effectiveFrom: '2026-07-01',
+			cycleWeeks: '1',
+			anchorMonday: '2026-06-29',
+			days: '[]'
+		};
+		await actions.schedule(actionEvent(fields));
+		const result = await actions.schedule(actionEvent(fields));
+
+		expect(result).toMatchObject({
+			status: 400,
+			data: { errors: { effectiveFrom: ['A schedule already starts on this date.'] } }
+		});
+		expect(listSchedules(db)).toHaveLength(1);
+	});
+
+	it('re-throws a schedule save failure that is not a date collision', async () => {
+		vi.spyOn(schedulesRepo, 'createSchedule').mockImplementationOnce(() => {
+			throw new Error('disk full');
+		});
+		const { actions } = await import('./+page.server');
+		await expect(
+			actions.schedule(
+				actionEvent({
+					effectiveFrom: '2026-07-01',
+					cycleWeeks: '1',
+					anchorMonday: '2026-06-29',
+					days: '[]'
+				})
+			)
+		).rejects.toThrow('disk full');
+	});
+
 	it('deletes a schedule and re-plans from its effective date', async () => {
 		const { actions } = await import('./+page.server');
 		await actions.schedule(
@@ -343,6 +455,31 @@ describe('holiday actions', () => {
 		const { actions } = await import('./+page.server');
 		const result = await actions.holidayCreate(actionEvent({ date: '2026-09-14', name: '' }));
 		expect(result).toMatchObject({ status: 400 });
+	});
+
+	it('fails to create a duplicate custom holiday, instead of throwing', async () => {
+		const { actions } = await import('./+page.server');
+		const fields = { date: '2026-09-14', name: 'Office Location 1 anniversary' };
+		await actions.holidayCreate(actionEvent(fields));
+		const result = await actions.holidayCreate(actionEvent(fields));
+
+		expect(result).toMatchObject({
+			status: 400,
+			data: { errors: { name: ['This holiday is already recorded on this date.'] } }
+		});
+		expect(listHolidays(db, 'AU-VIC').filter((row) => row.source === 'custom')).toHaveLength(1);
+	});
+
+	it('re-throws a holiday create failure that is not a duplicate', async () => {
+		vi.spyOn(holidaysRepo, 'addCustomHoliday').mockImplementationOnce(() => {
+			throw new Error('disk full');
+		});
+		const { actions } = await import('./+page.server');
+		await expect(
+			actions.holidayCreate(
+				actionEvent({ date: '2026-09-14', name: 'Office Location 1 anniversary' })
+			)
+		).rejects.toThrow('disk full');
 	});
 
 	it('toggles a holiday disabled and back', async () => {

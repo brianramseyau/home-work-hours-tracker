@@ -1,9 +1,17 @@
 import { page } from 'vitest/browser';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('$app/state', () => import('$lib/test-utils/pageFormStub.svelte'));
+
+import { resetPageForm, setPageForm } from '$lib/test-utils/pageFormStub.svelte';
 import { render } from 'vitest-browser-svelte';
 import HolidaysTab from './HolidaysTab.svelte';
 
 const fy = { startYear: 2026, label: 'FY27' };
+
+beforeEach(() => {
+	resetPageForm();
+});
 
 describe('HolidaysTab', () => {
 	it('shows an empty state when there are no holidays for the FY', async () => {
@@ -45,5 +53,16 @@ describe('HolidaysTab', () => {
 		await expect
 			.element(page.getByRole('button', { name: 'Add holiday' }))
 			.toHaveAttribute('type', 'submit');
+	});
+
+	it('shows a field error message after a failed add', async () => {
+		setPageForm({
+			form: 'holidayCreate',
+			errors: { name: ['This holiday is already recorded on this date.'] }
+		});
+		render(HolidaysTab, { holidays: [], fy });
+		await expect
+			.element(page.getByRole('alert'))
+			.toHaveTextContent('This holiday is already recorded on this date.');
 	});
 });
