@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Day } from './dayType';
-import { claimCents, dayHomeMinutes, summarise } from './totals';
+import { claimCents, claimCentsByGroup, dayHomeMinutes, summarise } from './totals';
 
 function day(overrides: Partial<Day>): Day {
 	return {
@@ -107,5 +107,23 @@ describe('claimCents', () => {
 		// Three days of 153 minutes at 70c/hr: 153/60*70 = 178.5c each (would round to 179×3=537
 		// if rounded per-day); summed first it's 459 min → 535.5c → 536c.
 		expect(claimCents(153 * 3, 70)).toBe(536);
+	});
+});
+
+describe('claimCentsByGroup', () => {
+	it('sums to exactly claimCents of the total, unlike rounding each entry independently', () => {
+		// 50 + 50 minutes at 100c/hr: 50/60*100 = 83.33c each, which independently rounds to
+		// 83c + 83c = 166c — one cent short of the true total claim of 167c.
+		const parts = claimCentsByGroup([50, 50], 100);
+		expect(parts.reduce((sum, cents) => sum + cents, 0)).toBe(claimCents(100, 100));
+		expect(parts).toEqual([83, 84]);
+	});
+
+	it('matches claimCents for a single entry', () => {
+		expect(claimCentsByGroup([456], 70)).toEqual([532]);
+	});
+
+	it('gives every zero-minute entry a zero claim', () => {
+		expect(claimCentsByGroup([0, 456, 0], 70)).toEqual([0, 532, 0]);
 	});
 });

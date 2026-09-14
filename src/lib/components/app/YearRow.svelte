@@ -14,7 +14,7 @@
 		rateCentsPerHour: number;
 		rateNote: string | null;
 		finalisedAt: string | null;
-		fy: { label: string; range: string };
+		fy: { label: string; slug: string; range: string };
 		homeMinutes: number;
 		claimCents: number;
 	}
@@ -94,6 +94,10 @@
 			</div>
 		{/if}
 	</dl>
+
+	<Button href={`/${year.fy.slug}`} variant="link" size="sm" class="h-auto self-start p-0">
+		Open diary
+	</Button>
 
 	{#if editing}
 		<form method="POST" action="?/updateRate" use:enhance class="flex flex-wrap items-end gap-3">

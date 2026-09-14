@@ -12,7 +12,7 @@ const baseYear = {
 	rateCentsPerHour: 70,
 	rateNote: null as string | null,
 	finalisedAt: null as string | null,
-	fy: { label: 'FY27', range: 'Jul 2026 – Jun 2027' },
+	fy: { label: 'FY27', slug: 'fy27', range: 'Jul 2026 – Jun 2027' },
 	homeMinutes: 456,
 	claimCents: 532
 };
@@ -30,6 +30,9 @@ describe('YearRow', () => {
 		await expect.element(page.getByText('$0.70/hr')).toBeInTheDocument();
 		await expect.element(page.getByText('7.6 h')).toBeInTheDocument();
 		await expect.element(page.getByText('$5.32')).toBeInTheDocument();
+		await expect
+			.element(page.getByRole('link', { name: 'Open diary' }))
+			.toHaveAttribute('href', '/fy27');
 	});
 
 	it('shows the rate note when set, and omits it otherwise', async () => {

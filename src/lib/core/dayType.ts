@@ -37,3 +37,21 @@ export function displayType(day: Pick<Day, 'kind' | 'officeId' | 'blocks'>): Dis
 	if (hasOffice) return 'office';
 	return 'off';
 }
+
+const DISPLAY_TYPE_LABELS: Record<DisplayType, string> = {
+	home: 'Home',
+	office: 'Office',
+	split: 'Split',
+	leave: 'Leave',
+	sick: 'Sick',
+	public_holiday: 'Public holiday',
+	off: 'Off'
+};
+
+/** Every display type, in the order shown in the legend and the day-type breakdown. */
+export const DISPLAY_TYPES = Object.keys(DISPLAY_TYPE_LABELS) as DisplayType[];
+
+/** The label shown in the punch card, the legend and the day editor's kind toggle. */
+export function displayTypeLabel(type: DisplayType): string {
+	return DISPLAY_TYPE_LABELS[type];
+}

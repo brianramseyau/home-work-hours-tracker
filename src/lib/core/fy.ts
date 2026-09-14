@@ -73,6 +73,36 @@ export function datesInFy(
 	return options.includeWeekends ? dates : dates.filter((date) => !isWeekend(date));
 }
 
+const MONTH_NAMES = [
+	'Jan',
+	'Feb',
+	'Mar',
+	'Apr',
+	'May',
+	'Jun',
+	'Jul',
+	'Aug',
+	'Sep',
+	'Oct',
+	'Nov',
+	'Dec'
+];
+
+/** The financial year's 12 calendar months, in order, as "YYYY-MM". */
+export function monthsInFy(startYear: number): string[] {
+	return [...Array(12).keys()].map((offset) => {
+		const monthIndex = (6 + offset) % 12; // 0 = Jan … 6 = Jul
+		const year = monthIndex >= 6 ? startYear : startYear + 1;
+		return `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
+	});
+}
+
+/** "Jul 2026" for "2026-07". */
+export function monthLabel(month: string): string {
+	const [year, monthNumber] = month.split('-');
+	return `${MONTH_NAMES[Number(monthNumber) - 1]} ${year}`;
+}
+
 export interface FySummary {
 	startYear: number;
 	label: string;
