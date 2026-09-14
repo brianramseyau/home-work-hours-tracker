@@ -4,7 +4,7 @@
 // context itself from `params.fy`, via the same helper the `[fy]` layout's load uses.
 
 import { fail, type RequestEvent } from '@sveltejs/kit';
-import { daySchema } from '$lib/core/validation';
+import { daySchema, ISO_DATE } from '$lib/core/validation';
 import { resetDayToSchedule } from './autoPrefill';
 import { db } from './db';
 import { loadFyContext } from './fyContext';
@@ -18,6 +18,13 @@ function dayGuardFailure(
 		year
 	}: { fyBounds: { start: string; end: string }; year: { finalisedAt: string | null } | null }
 ) {
+	if (!ISO_DATE.test(date)) {
+		return fail(400, {
+			form: 'day',
+			date,
+			errors: { date: ['Expected a date in YYYY-MM-DD format'] }
+		});
+	}
 	if (date < fyBounds.start || date > fyBounds.end) {
 		return fail(400, {
 			form: 'day',

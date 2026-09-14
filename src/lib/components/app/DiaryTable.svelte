@@ -66,6 +66,15 @@
 	}
 
 	function onKeydown(event: KeyboardEvent) {
+		// Ignore keystrokes typed into a field — the day editor's Notes textarea and the Mark
+		// range dialog's note field are both mounted alongside this table on desktop, and without
+		// this guard j/k/Enter/Esc would hijack ordinary typing there instead of reaching the field.
+		if (
+			event.target instanceof HTMLElement &&
+			event.target.closest('input, textarea, select, [contenteditable]')
+		) {
+			return;
+		}
 		if (event.key === 'j') {
 			event.preventDefault();
 			moveFocus(1);
@@ -131,6 +140,7 @@
 								<input type="hidden" name="date" value={day.date} />
 								<input type="hidden" name="kind" value="work" />
 								<input type="hidden" name="officeId" value="" />
+								<input type="hidden" name="notes" value={day.notes ?? ''} />
 								<input
 									type="hidden"
 									name="blocks"

@@ -69,3 +69,22 @@ export function summarise(days: Pick<Day, 'date' | 'kind' | 'blocks'>[]): Summar
 export function claimCents(totalMinutes: number, rateCentsPerHour: number): number {
 	return Math.round((totalMinutes * rateCentsPerHour) / 60);
 }
+
+/**
+ * Splits a claim across an ordered group (e.g. one entry per month) so the parts sum to exactly
+ * `claimCents(sum(minutesList), rateCentsPerHour)` — rounding each entry independently can drift
+ * from the year total (AGENTS.md: round once, at the end). Uses cumulative (largest-remainder
+ * style) rounding: each entry gets whatever rounds the running total correctly, so the drift
+ * never accumulates past a single cent and the parts always reconcile with the whole.
+ */
+export function claimCentsByGroup(minutesList: number[], rateCentsPerHour: number): number[] {
+	let cumulativeExact = 0;
+	let cumulativeRounded = 0;
+	return minutesList.map((minutes) => {
+		cumulativeExact += (minutes * rateCentsPerHour) / 60;
+		const roundedSoFar = Math.round(cumulativeExact);
+		const entryClaim = roundedSoFar - cumulativeRounded;
+		cumulativeRounded = roundedSoFar;
+		return entryClaim;
+	});
+}

@@ -31,16 +31,18 @@
 	{#each weeks as week (week[0].week)}
 		<div class="flex gap-1 lg:flex-col" role="row">
 			{#each week as day (day.date)}
-				<button
-					type="button"
-					class="punch-cell size-3.5 rounded-[3px] outline-none focus-visible:ring-2 focus-visible:ring-ring lg:size-3"
-					style={`animation-delay: ${cellIndex.get(day.date)! * delayStep}ms`}
-					onclick={() => onSelectDay?.(day.date)}
-					title={describe(day)}
-					aria-label={describe(day)}
-				>
-					<TypeSwatch type={day.displayType} future={day.status === 'future'} class="size-full" />
-				</button>
+				<div role="gridcell">
+					<button
+						type="button"
+						class="punch-cell size-3.5 rounded-[3px] outline-none focus-visible:ring-2 focus-visible:ring-ring lg:size-3"
+						style={`animation-delay: ${cellIndex.get(day.date)! * delayStep}ms`}
+						onclick={() => onSelectDay?.(day.date)}
+						title={describe(day)}
+						aria-label={describe(day)}
+					>
+						<TypeSwatch type={day.displayType} future={day.status === 'future'} class="size-full" />
+					</button>
+				</div>
 			{/each}
 		</div>
 	{/each}

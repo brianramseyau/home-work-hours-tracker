@@ -194,6 +194,32 @@ describe('DayEditor', () => {
 		expect(event.defaultPrevented).toBe(true);
 	});
 
+	it('re-syncs its fields when the day prop itself changes (e.g. Reset to schedule reloading it)', async () => {
+		const { rerender } = render(DayEditor, {
+			day: homeDay,
+			offices,
+			standard: STANDARD,
+			finalised: false
+		});
+
+		await page.getByLabelText('Notes').fill('Draft note, about to be discarded');
+
+		await rerender({
+			day: { ...homeDay, displayType: 'office', officeId: 2, notes: null, blocks: [] },
+			offices,
+			standard: STANDARD,
+			finalised: false
+		});
+
+		await expect
+			.element(page.getByRole('radio', { name: 'Office', exact: true }))
+			.toHaveAttribute('data-state', 'on');
+		await expect
+			.element(page.getByRole('radio', { name: 'Office Location 2' }))
+			.toHaveAttribute('data-state', 'on');
+		await expect.element(page.getByLabelText('Notes')).toHaveValue('');
+	});
+
 	it('does not re-fire onSaved for a result that was already there when it opened', async () => {
 		setPageForm({ form: 'day', date: '2026-09-16', success: true });
 		let saved = 0;

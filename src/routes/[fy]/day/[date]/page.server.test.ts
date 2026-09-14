@@ -17,8 +17,11 @@ beforeEach(() => {
 	testDb.current = db;
 });
 
-function loadEvent(date: string) {
-	return { params: { date } } as Parameters<Awaited<typeof import('./+page.server')>['load']>[0];
+function loadEvent(date: string, fyBounds = { start: '2026-07-01', end: '2027-06-30' }) {
+	return {
+		params: { date },
+		parent: async () => ({ fyBounds })
+	} as Parameters<Awaited<typeof import('./+page.server')>['load']>[0];
 }
 
 interface LoadResult {
@@ -35,7 +38,17 @@ describe('load', () => {
 	it('404s on a malformed date', async () => {
 		const { load } = await import('./+page.server');
 		try {
-			load(loadEvent('not-a-date'));
+			await load(loadEvent('not-a-date'));
+			expect.unreachable('expected an error');
+		} catch (thrown) {
+			expect(thrown).toMatchObject({ status: 404 });
+		}
+	});
+
+	it('404s on a date outside the financial year in the URL', async () => {
+		const { load } = await import('./+page.server');
+		try {
+			await load(loadEvent('2030-01-01'));
 			expect.unreachable('expected an error');
 		} catch (thrown) {
 			expect(thrown).toMatchObject({ status: 404 });
@@ -44,7 +57,7 @@ describe('load', () => {
 
 	it('defaults to an off day when no row exists yet', async () => {
 		const { load } = await import('./+page.server');
-		const result = load(loadEvent('2026-09-16')) as LoadResult;
+		const result = (await load(loadEvent('2026-09-16'))) as LoadResult;
 		expect(result.day).toEqual({
 			date: '2026-09-16',
 			officeId: null,
@@ -69,7 +82,7 @@ describe('load', () => {
 		);
 
 		const { load } = await import('./+page.server');
-		const result = load(loadEvent('2026-09-16')) as LoadResult;
+		const result = (await load(loadEvent('2026-09-16'))) as LoadResult;
 		expect(result.day).toMatchObject({ notes: 'Focus day', displayType: 'home' });
 	});
 });

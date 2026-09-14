@@ -201,9 +201,15 @@ describe('actions.resetDay', () => {
 		expect(getDay(db, '2026-09-16')).toBeNull(); // no schedule in effect — reverts to nothing
 	});
 
-	it('treats a missing date field as an empty string, which is outside the FY', async () => {
+	it('treats a missing date field as an empty string, which fails date validation', async () => {
 		const { actions } = await import('./+page.server');
 		const result = await actions.resetDay(actionEvent({}));
+		expect(result).toMatchObject({ status: 400 });
+	});
+
+	it('rejects a malformed date rather than persisting or planning against it', async () => {
+		const { actions } = await import('./+page.server');
+		const result = await actions.resetDay(actionEvent({ date: '2026-7-1' }));
 		expect(result).toMatchObject({ status: 400 });
 	});
 
@@ -231,10 +237,17 @@ describe('actions.clearDay', () => {
 		expect(result).toMatchObject({ status: 400 });
 	});
 
-	it('treats a missing date field as an empty string, which is outside the FY', async () => {
+	it('treats a missing date field as an empty string, which fails date validation', async () => {
 		const { actions } = await import('./+page.server');
 		const result = await actions.clearDay(actionEvent({}));
 		expect(result).toMatchObject({ status: 400 });
+	});
+
+	it('rejects a malformed date rather than persisting it verbatim', async () => {
+		const { actions } = await import('./+page.server');
+		const result = await actions.clearDay(actionEvent({ date: '2026-09-01junk' }));
+		expect(result).toMatchObject({ status: 400 });
+		expect(getDay(db, '2026-09-01junk')).toBeNull();
 	});
 });
 

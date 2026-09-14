@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { monthLabel, monthsInFy } from '$lib/core/fy';
 	import { formatHours } from '$lib/core/time';
-	import { claimCents } from '$lib/core/totals';
+	import { claimCentsByGroup } from '$lib/core/totals';
 
 	let {
 		startYear,
@@ -15,6 +15,17 @@
 
 	const minutesByMonth = $derived(new Map(byMonth.map((row) => [row.month, row.minutes])));
 	const maxMinutes = $derived(Math.max(1, ...byMonth.map((row) => row.minutes)));
+
+	// Rounded once per month independently, the 12 figures can disagree with the year's own
+	// rounded claim (AGENTS.md: round once, at the end) — claimCentsByGroup distributes the
+	// rounding so the months always sum to exactly that year total.
+	const months = $derived(monthsInFy(startYear));
+	const claimsByMonth = $derived.by(() => {
+		if (rateCentsPerHour === null) return null;
+		const minutesInOrder = months.map((month) => minutesByMonth.get(month) ?? 0);
+		const claims = claimCentsByGroup(minutesInOrder, rateCentsPerHour);
+		return new Map(months.map((month, index) => [month, claims[index]]));
+	});
 
 	function formatDollars(cents: number): string {
 		return `$${(cents / 100).toFixed(2)}`;
@@ -47,7 +58,7 @@
 					</div>
 				</td>
 				<td class="py-1.5 tabular">
-					{rateCentsPerHour !== null ? formatDollars(claimCents(minutes, rateCentsPerHour)) : '—'}
+					{claimsByMonth !== null ? formatDollars(claimsByMonth.get(month)!) : '—'}
 				</td>
 			</tr>
 		{/each}

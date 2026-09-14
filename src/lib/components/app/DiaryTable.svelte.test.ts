@@ -166,11 +166,51 @@ describe('DiaryTable', () => {
 		await expect.element(page.getByRole('button', { name: 'Save' })).toBeInTheDocument();
 	});
 
+	it('ignores keyboard shortcuts typed into a field', async () => {
+		render(DiaryTable, { weeks: weeksFor(), onOpenDay: () => {} });
+		await page.getByRole('button', { name: 'Edit time block 09:00–17:06' }).click();
+
+		const [start] = Array.from(
+			document.querySelectorAll('input[type="time"]')
+		) as HTMLInputElement[];
+		start.focus();
+		start.dispatchEvent(new KeyboardEvent('keydown', { key: 'j', bubbles: true }));
+
+		expect(document.activeElement).toBe(start);
+	});
+
 	it('stops listening for keyboard shortcuts once unmounted', async () => {
 		const { unmount } = render(DiaryTable, { weeks: weeksFor(), onOpenDay: () => {} });
 		await unmount();
 		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'j' }));
 		expect(document.querySelector('table')).toBeNull();
+	});
+
+	it('carries a note-free day’s (empty) note through the inline time edit', async () => {
+		const days = buildDiaryDays({
+			startYear: 2026,
+			today: '2026-09-14',
+			days: [
+				{
+					date: '2026-09-14',
+					kind: 'work',
+					officeId: null,
+					notes: null,
+					source: 'manual',
+					blocks: [STANDARD]
+				}
+			],
+			schedules: [],
+			holidays: [],
+			standard: STANDARD,
+			includeWeekends: false
+		});
+
+		render(DiaryTable, { weeks: groupDiaryDaysByWeek(days), onOpenDay: () => {} });
+		await page.getByRole('button', { name: 'Edit time block 09:00–17:06' }).click();
+
+		const notesInput = document.querySelector('input[name="notes"]') as HTMLInputElement;
+		expect(notesInput.value).toBe('');
 	});
 
 	it('shows the schedule marker for a prefill or ghost day', async () => {

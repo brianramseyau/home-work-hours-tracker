@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { weekday } from './date';
 import { validateBlock } from './time';
 
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+export const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const HH_MM = /^([0-1]\d|2[0-3]):([0-5]\d)$/;
 
 const isoDate = z.string().regex(ISO_DATE, 'Expected a date in YYYY-MM-DD format');

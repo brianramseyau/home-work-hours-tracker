@@ -56,6 +56,17 @@
 	// this same date doesn't render as this fresh attempt's own outcome until it actually changes.
 	const openedWithForm = untrack(() => page.form);
 
+	// Re-seeds local state whenever the `day` prop itself changes — not just on mount. Without
+	// this, the deep-link page (which has no `onSaved` and doesn't remount the editor on a
+	// same-date result) kept showing stale type/notes/blocks after "Reset to schedule" or "Clear
+	// day" reloaded `data.day`, even though the action had genuinely applied.
+	$effect(() => {
+		uiKind = day.displayType;
+		officeId = day.officeId;
+		notes = day.notes ?? '';
+		blocks = day.blocks.length > 0 ? day.blocks.map((block) => ({ ...block })) : [];
+	});
+
 	const showsBlocks = $derived(uiKind === 'home' || uiKind === 'split');
 	const showsOffice = $derived(uiKind === 'office' || uiKind === 'split');
 
