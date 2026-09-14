@@ -121,7 +121,7 @@ describe('buildWorkbook', () => {
 		expect(row.getCell('D').value).toBe('Home');
 		expect(row.getCell('F').numFmt).toBe('hh:mm');
 		expect(row.getCell('I').value).toMatchObject({
-			formula: 'IF(F2="","",ROUND((G2-F2)*24-H2/60,2))',
+			formula: 'IF(F2="","",(G2-F2)*24-H2/60)',
 			result: 7.6
 		});
 	});
@@ -168,7 +168,7 @@ describe('buildWorkbook', () => {
 		expect(row.getCell('E').value).toBe('Office Location 2');
 		expect(row.getCell('F').value).toBeNull();
 		expect(row.getCell('I').value).toMatchObject({
-			formula: 'IF(F2="","",ROUND((G2-F2)*24-H2/60,2))'
+			formula: 'IF(F2="","",(G2-F2)*24-H2/60)'
 		});
 	});
 
@@ -318,6 +318,37 @@ describe('buildWorkbook', () => {
 		expect(claimCell.result).toBeCloseTo(expectedClaim, 2);
 	});
 
+	it('matches core/totals.claimCents exactly even when per-block hours do not round evenly', async () => {
+		// Two 457-minute blocks (7.61666… h each) would round to 7.62 h independently and sum to
+		// 15.24 h -> a $10.67 claim; rounding once from the 914 integer minutes gives $10.66
+		// (`claimCents(914, 70)`) — the two only agree if the claim is computed from minutes,
+		// not from a sum of already-rounded per-row hours.
+		const days: Day[] = [
+			{
+				date: '2026-07-01',
+				kind: 'work',
+				officeId: null,
+				notes: null,
+				source: 'manual',
+				blocks: [{ start: '09:00', end: '16:37', breakMinutes: 0 }] // 457 min
+			},
+			{
+				date: '2026-07-02',
+				kind: 'work',
+				officeId: null,
+				notes: null,
+				source: 'manual',
+				blocks: [{ start: '09:00', end: '16:37', breakMinutes: 0 }] // 457 min
+			}
+		];
+		const buffer = await buildWorkbook(baseInput({ days }));
+		const workbook = await loadWorkbook(buffer);
+		const summary = workbook.getWorksheet('Summary')!;
+		const claimCell = summary.getCell('B8').value as { result: number };
+		expect(claimCell.result).toBe(claimCents(914, 70) / 100);
+		expect(claimCell.result).not.toBeCloseTo(10.67, 2);
+	});
+
 	it('adds a data-bar rule to the monthly Hours column', async () => {
 		const buffer = await buildWorkbook(baseInput());
 		const workbook = await loadWorkbook(buffer);
@@ -378,6 +409,74 @@ describe('buildWorkbook', () => {
 		expect(withWeekends.getWorksheet('Diary')!.rowCount).toBeGreaterThan(
 			withoutWeekends.getWorksheet('Diary')!.rowCount
 		);
+	});
+
+	it('still includes a weekend day that has data, even with includeWeekends off', async () => {
+		// 2026-07-04 is a Saturday. A day saved through the deep-link editor still counts toward
+		// the app's own totals (`diaryLoad.ts` sums `listRange` unfiltered), so it must not
+		// silently disappear from the export just because the weekend toggle is off.
+		const days: Day[] = [
+			{
+				date: '2026-07-04',
+				kind: 'work',
+				officeId: null,
+				notes: null,
+				source: 'manual',
+				blocks: [homeBlock]
+			}
+		];
+		const buffer = await buildWorkbook(baseInput({ days }));
+		const workbook = await loadWorkbook(buffer);
+		const diary = workbook.getWorksheet('Diary')!;
+		let saturdayRow: ExcelJS.Row | null = null;
+		diary.eachRow((row) => {
+			if (row.getCell('B').value instanceof Date && row.getCell('D').value === 'Home') {
+				saturdayRow = row;
+			}
+		});
+		expect(saturdayRow).not.toBeNull();
+		expect(saturdayRow!.getCell('I').value).toMatchObject({ result: 7.6 });
+
+		const summary = workbook.getWorksheet('Summary')!;
+		expect((summary.getCell('B7').value as { result: number }).result).toBe(7.6);
+	});
+
+	it('does not count blocks on a non-work day, even if the row carries them', async () => {
+		// The schema doesn't forbid a leave/sick/off/public_holiday day from carrying blocks
+		// (`daySchema` has no kind-to-blocks rule), and `dayHomeMinutes` — the single source of
+		// truth for home hours — only ever counts a `work` day's blocks. The export must agree.
+		const days: Day[] = [
+			{
+				date: '2026-07-01',
+				kind: 'leave',
+				officeId: null,
+				notes: null,
+				source: 'manual',
+				blocks: [homeBlock]
+			},
+			// A real home day too, so the total is non-zero — otherwise exceljs's own formula-cell
+			// serialization drops a cached `result: 0` (`FormulaValue._copyModel`'s `if (value)`
+			// check treats 0 as absent), which would make this assertion pass for the wrong reason.
+			{
+				date: '2026-07-02',
+				kind: 'work',
+				officeId: null,
+				notes: null,
+				source: 'manual',
+				blocks: [homeBlock]
+			}
+		];
+		const buffer = await buildWorkbook(baseInput({ days }));
+		const workbook = await loadWorkbook(buffer);
+		const row = workbook.getWorksheet('Diary')!.getRow(2);
+		expect(row.getCell('D').value).toBe('Leave');
+		expect(row.getCell('F').value).toBeNull();
+		expect(row.getCell('I').value).toMatchObject({
+			formula: 'IF(F2="","",(G2-F2)*24-H2/60)'
+		});
+
+		const summary = workbook.getWorksheet('Summary')!;
+		expect((summary.getCell('B7').value as { result: number }).result).toBe(7.6);
 	});
 
 	it('sets the print footer and paper orientation on both sheets', async () => {

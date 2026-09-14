@@ -10,7 +10,7 @@
 
 ### Sheet 1: "Summary"
 
-1. **Title band.** Rows 1–3 are merged across and filled with ink. The logo (`static/brand/logo-lockup.png`) is placed with `addImage`. The title reads "Home work diary FY27", the subtitle "1 Jul 2026 – 30 Jun 2027", and then the name (`settings.full_name`, or "Name not set").
+1. **Title band.** Rows 1–3 are merged across and filled with ink. The logo (`src/lib/assets/logo-mark-light.png`, bundled at build time via a Vite `?inline` import — not `static/brand/logo-lockup.png`, which never existed; see Notes and deviations) is placed with `addImage`. The title reads "Home work diary FY27", the subtitle "1 Jul 2026 – 30 Jun 2027", and then the name (`settings.full_name`, or "Name not set").
 2. **Key figures**, as label/value pairs:
    - Method: "ATO fixed rate method".
    - Rate: `$0.70 per hour`, with the `rate_note`.
@@ -28,7 +28,7 @@
   - One row per home block. A Split day's second block is indented, with the date repeated in muted text.
   - Non-home days are included, with blank times, for a complete audit trail.
   - Weekends are included only if `include_weekends` is on or they have data.
-- **Formulas:** Hours is `=IF(F="","",ROUND((G-F)*24 - H/60, 2))`. Start and End are written as Excel time values (fractions of a day) with an `hh:mm` format. The totals row is `=SUM(I:I)` over the data range.
+- **Formulas:** Hours is `=IF(F="","",(G-F)*24 - H/60)` — **not** rounded per row (a per-row `ROUND(...,2)` would make the sheet's own total drift from `core/totals.claimCents` by up to a cent on non-round block times; AGENTS.md's domain rule is to round once, at the end). `numFmt` formats the display to 2 dp without touching the stored value. Start and End are written as Excel time values (fractions of a day) with an `hh:mm` format. The totals row is `=SUM(I:I)` over the data range.
 - **Styling:**
   - Header row: ink fill and white bold text.
   - Row tints per day type (light versions of the DESIGN.md palette).
@@ -48,7 +48,7 @@
   - A primary "Download spreadsheet" button, and a short line saying what's included.
   - A warning if the name isn't set, linking to Settings.
   - A warning if the FY isn't finalised ("You can still edit this year").
-- `/[fy]/export.xlsx/+server.ts`:
+- `/[fy]/export/download/+server.ts` (**not** `/[fy]/export.xlsx/+server.ts` — see Notes and deviations):
   - `GET` loads the data through the repos and calls `buildWorkbook`.
   - It responds with `Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` and `Content-Disposition: attachment; filename="FY27-home-work-diary.xlsx"`.
   - An unknown FY returns 404.
@@ -79,6 +79,10 @@
 ## Notes and deviations
 
 - **Download route is `/[fy]/export/download`, not `/[fy]/export.xlsx`.** A literal `export.xlsx` path segment matches the repo-wide `*.xlsx` rule in `.gitignore` (AGENTS.md §1's guard against ever committing a real spreadsheet), so `git` silently ignored the route file under that name. The served filename is unaffected — `Content-Disposition` still names the download `FY27-home-work-diary.xlsx`; only the URL path changed.
-- **Logo image is the existing `static/brand/logo-mark-light.png` mark**, not a `logo-lockup.png`. Phase 01 never produced a lockup asset (only `logo-mark.svg`, `favicon-glyph.svg` and `lamp-off.svg` exist under `src/lib/assets/`, plus the one PNG under `static/brand/`), so the title band uses the mark alone rather than blocking this phase on new asset creation. The workbook title and subtitle text next to it already carry the wordmark's job.
+- **Logo image is the existing mark, not a `logo-lockup.png`.** Phase 01 never produced a lockup asset (only `logo-mark.svg`, `favicon-glyph.svg` and `lamp-off.svg` exist under `src/lib/assets/`), so the title band uses the mark alone rather than blocking this phase on new asset creation. The workbook title and subtitle text next to it already carry the wordmark's job. The mark itself now lives at `src/lib/assets/logo-mark-light.png` (moved there from `static/brand/` during review — see below) and `scripts/generate-icons.mjs` regenerates it in place.
+- **The logo is bundled at build time, not read from disk at request time.** The first cut read `static/brand/logo-mark-light.png` via `fs.readFileSync(path.join(process.cwd(), ...))`, which only worked because dev, `vite preview` and vitest all happen to run from the repo root — under `adapter-node`'s self-contained build output, nothing guarantees that path exists relative to the server process's cwd once deployed (e.g. the Docker image), so the first export would 500. Fixed by moving the asset to `src/lib/assets/` and importing it with Vite's `?inline` suffix (`src/lib/server/logo.ts`), which embeds it as a base64 string in the JS bundle — no filesystem access at all.
 - **Monthly `SUMIFS` formulas match against a hidden helper column D** (the "YYYY-MM" key) on the Summary sheet, since the visible month label ("Jul 2026") doesn't equal the Diary's own hidden Month column value and SUMIFS needs an exact match.
-- Every formula cell also carries a **pre-computed cached result** (not left for the spreadsheet app to calculate on first open), computed directly from the same `days` data the formulas reference, so the workbook shows correct figures immediately and the unit/E2E tests can assert on real numbers without a spreadsheet engine.
+- **Diary row Hours are not rounded per row** (`=IF(F="","",(G-F)*24-H/60)`, no `ROUND`) — an earlier cut rounded each row to 2 dp, which for non-round block times (e.g. two 457-minute blocks) made the sheet's own total and claim drift by up to a cent from `core/totals.claimCents`. The total and annual claim are now computed from the same `summarise()`/`claimCents()` the rest of the app uses; the twelve monthly cached claims use `claimCentsByGroup` so they always sum to the annual figure (the live per-cell `ROUND` formula can still independently round a given month by up to a cent on recalculation — an inherent spreadsheet-formula limitation, not a bug, and the same tension `MonthBreakdown.svelte`'s own comment already documents for the in-app view).
+- **A weekend date that has a recorded day is included even when "Include weekends" is off.** The app's own totals (`diaryLoad.ts`, via `listRange`) count every persisted row regardless of weekday, so a day saved through the deep-link editor (e.g. `/fy27/day/2026-07-04`) must not silently vanish from the export just because the weekend toggle happens to be off.
+- **Blocks on a non-`work` day are never shown as timed hours**, even though `daySchema` doesn't forbid a `leave`/`sick`/`off`/`public_holiday` row from carrying them — `dayHomeMinutes` (the single source of truth for home hours) only ever counts a `work` day's blocks, and the export now gates on the same condition.
+- Every formula cell also carries a **pre-computed cached result** (not left for the spreadsheet app to calculate on first open), computed directly from the same `days` data the formulas reference, so the workbook shows correct figures immediately and the unit/E2E tests can assert on real numbers without a spreadsheet engine. One caveat: exceljs's own `FormulaValue._copyModel` drops a cached `result` of exactly `0` on write/read (a truthy check treats `0` as absent), so a formula cell whose true value is zero shows blank until the spreadsheet app recalculates — cosmetic only, since the live formula itself is unaffected and every mainstream spreadsheet app recalculates on open by default.

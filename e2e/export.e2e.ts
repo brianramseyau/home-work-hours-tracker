@@ -52,12 +52,16 @@ test('export: download the FY27 spreadsheet and cross-check its totals against t
 }) => {
 	await ensureSetUp(page);
 
-	await page.goto('/fy27');
-	await page.waitForLoadState('networkidle');
-
+	// Visiting /fy27/export triggers the same auto-prefill as any other page (the root layout's
+	// load runs ensurePrefilled on every navigation), so there's no need to warm the diary up on
+	// a separate page first.
 	await page.goto('/fy27/export');
 	const homeHoursText = await page.getByText(/h at home$/).textContent();
 	const displayedHours = Number(homeHoursText!.replace(/[^\d.]/g, ''));
+	// A schedule was just created (or already existed) with Mon–Fri home days, and "today" is
+	// pinned well into FY27, so there should be real accumulated hours by now — otherwise the
+	// cross-check below (0 vs 0) would pass without actually exercising the export's totals.
+	expect(displayedHours).toBeGreaterThan(0);
 
 	const [download] = await Promise.all([
 		page.waitForEvent('download'),
