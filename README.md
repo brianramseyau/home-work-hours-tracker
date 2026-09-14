@@ -58,6 +58,8 @@ docker run -d \
   ghcr.io/brianramseyau/home-work-hours-tracker:latest
 ```
 
+`:latest` tracks the most recent tagged release (nothing until the first one is cut); `:develop` is a moving tag rebuilt from every push to `main`, and `dev-<sha>` pins one exact commit if you need to hold a specific build.
+
 Open `http://localhost:3000`. `PUID`/`PGID` (defaults `99`/`100`, Unraid's `nobody:users`) control who owns the files under `/data`; set `TZ` to your local timezone, since that's what decides "today". The app installs as a PWA from the browser's install prompt.
 
 ### Unraid
