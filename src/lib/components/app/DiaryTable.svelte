@@ -66,20 +66,25 @@
 	}
 
 	function onKeydown(event: KeyboardEvent) {
-		// Escape always dismisses the inline edit, even while a field inside it (the start/end
-		// time inputs) has focus — that's the natural place for focus to be once it's open.
-		if (event.key === 'Escape') {
+		const targetIsField =
+			event.target instanceof HTMLElement &&
+			event.target.closest('input, textarea, select, [contenteditable]');
+		// Escape from inside the open inline edit's own fields dismisses it, even though those
+		// fields match the "typed into a field" guard below — that's the natural place for focus
+		// to be once it's open. Escape from any *other* field (the day editor's Notes textarea,
+		// the Mark range dialog's note field — both mounted alongside this table on desktop) falls
+		// through to the guard instead, so it doesn't reach across and discard an unrelated edit.
+		const targetIsOwnInlineEdit =
+			editingDate !== null &&
+			event.target instanceof HTMLElement &&
+			event.target.closest('form[action="?/saveDay"]');
+		if (event.key === 'Escape' && (!targetIsField || targetIsOwnInlineEdit)) {
 			cancelInlineEdit();
 			return;
 		}
-		// Ignore every other shortcut when it's typed into a field — the day editor's Notes
-		// textarea and the Mark range dialog's note field are both mounted alongside this table
-		// on desktop, and without this guard j/k/Enter would hijack ordinary typing there instead
-		// of reaching the field.
-		if (
-			event.target instanceof HTMLElement &&
-			event.target.closest('input, textarea, select, [contenteditable]')
-		) {
+		// Ignore every other shortcut when it's typed into a field — without this guard j/k/Enter
+		// would hijack ordinary typing in any of those same fields.
+		if (targetIsField) {
 			return;
 		}
 		if (event.key === 'j') {

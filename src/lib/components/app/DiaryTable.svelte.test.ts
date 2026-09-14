@@ -181,6 +181,19 @@ describe('DiaryTable', () => {
 			.toBeInTheDocument();
 	});
 
+	it('leaves an open inline edit alone when Escape is typed into an unrelated field', async () => {
+		render(DiaryTable, { weeks: weeksFor(), onOpenDay: () => {} });
+		await page.getByRole('button', { name: 'Edit time block 09:00–17:06' }).click();
+
+		const unrelatedField = document.createElement('textarea');
+		document.body.appendChild(unrelatedField);
+		unrelatedField.focus();
+		unrelatedField.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+		unrelatedField.remove();
+
+		await expect.element(page.getByRole('button', { name: 'Save' })).toBeInTheDocument();
+	});
+
 	it('ignores keyboard shortcuts typed into a field', async () => {
 		render(DiaryTable, { weeks: weeksFor(), onOpenDay: () => {} });
 		await page.getByRole('button', { name: 'Edit time block 09:00–17:06' }).click();
