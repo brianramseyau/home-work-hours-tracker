@@ -54,6 +54,17 @@ test('theme toggle switches between light and dark', async ({ page }) => {
 	await expect(html).not.toHaveClass(/\bdark\b/);
 });
 
+test('the offline fallback page is reachable and accessible', async ({ page }) => {
+	// Precached by the service worker as the true offline fallback (see src/service-worker.ts);
+	// this just checks the page itself renders cleanly, not the offline interception.
+	await page.goto('/offline');
+	await expect(page.getByRole('heading', { level: 1 })).toHaveText("You're offline");
+	await expect(page.getByRole('link', { name: 'Try again' })).toHaveAttribute('href', '/');
+
+	const results = await new AxeBuilder({ page }).analyze();
+	expect(results.violations).toEqual([]);
+});
+
 test('footer links to the GitHub repository', async ({ page }) => {
 	await page.goto('/');
 	await expect(page.getByRole('link', { name: 'Source code on GitHub' })).toHaveAttribute(

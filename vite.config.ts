@@ -3,6 +3,7 @@ import { defineConfig } from 'vitest/config';
 import { playwright } from '@vitest/browser-playwright';
 import adapter from '@sveltejs/adapter-node';
 import { sveltekit } from '@sveltejs/kit/vite';
+import { SvelteKitPWA } from '@vite-pwa/sveltekit';
 import pkg from './package.json' with { type: 'json' };
 
 // package.json's version only bumps for tagged releases; untagged CI builds set APP_VERSION
@@ -27,6 +28,44 @@ export default defineConfig({
 					config.include.push('../drizzle.config.ts');
 				}
 			}
+		}),
+		SvelteKitPWA({
+			registerType: 'autoUpdate',
+			injectRegister: 'auto',
+			strategies: 'injectManifest',
+			includeAssets: ['favicon.svg', 'favicon.ico', 'apple-touch-icon.png'],
+			manifest: {
+				name: 'Home Work Hours Tracker',
+				short_name: 'Home Hours',
+				description:
+					'A self-hosted diary of hours worked from home, with automatic prefill and an accountant-ready export.',
+				theme_color: '#1D2640',
+				background_color: '#F4F6FA',
+				display: 'standalone',
+				start_url: '/',
+				icons: [
+					{ src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+					{ src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+					{
+						src: '/icons/icon-maskable-192.png',
+						sizes: '192x192',
+						type: 'image/png',
+						purpose: 'maskable'
+					},
+					{
+						src: '/icons/icon-maskable-512.png',
+						sizes: '512x512',
+						type: 'image/png',
+						purpose: 'maskable'
+					}
+				]
+			},
+			injectManifest: {
+				globPatterns: ['**/*.{js,css,html,svg,png,ico,woff,woff2}']
+			},
+			devOptions: {
+				enabled: false
+			}
 		})
 	],
 	test: {
@@ -46,7 +85,11 @@ export default defineConfig({
 				// (drizzle-kit, a separate CLI), never when applying pre-built migrations at
 				// runtime or running plain queries. Covered functionally by create.test.ts, which
 				// applies the real migration and checks `foreign_key_check`. See AGENTS.md §5.
-				'src/lib/server/db/schema.ts'
+				'src/lib/server/db/schema.ts',
+				// The @vite-pwa/sveltekit-compiled service worker: it only ever runs in the browser's
+				// separate service-worker execution context (no DOM, no vitest), so nothing in this
+				// project's test runners can import or exercise it. See AGENTS.md §5.
+				'src/service-worker.ts'
 			],
 			thresholds: { 100: true },
 			reporter: ['text', 'html', 'json', 'json-summary']
