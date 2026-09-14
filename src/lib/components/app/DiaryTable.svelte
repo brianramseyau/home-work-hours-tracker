@@ -72,12 +72,14 @@
 		// Escape from inside the open inline edit's own fields dismisses it, even though those
 		// fields match the "typed into a field" guard below — that's the natural place for focus
 		// to be once it's open. Escape from any *other* field (the day editor's Notes textarea,
-		// the Mark range dialog's note field — both mounted alongside this table on desktop) falls
-		// through to the guard instead, so it doesn't reach across and discard an unrelated edit.
+		// the Mark range dialog's note field — both mounted alongside this table on desktop, and
+		// the day editor also posts to the same `?/saveDay` action so a plain action selector would
+		// match it too) falls through to the guard instead, so it doesn't reach across and discard
+		// an unrelated edit. `data-inline-edit` on the form below is what actually scopes this.
 		const targetIsOwnInlineEdit =
 			editingDate !== null &&
 			event.target instanceof HTMLElement &&
-			event.target.closest('form[action="?/saveDay"]');
+			event.target.closest('form[data-inline-edit]');
 		if (event.key === 'Escape' && (!targetIsField || targetIsOwnInlineEdit)) {
 			cancelInlineEdit();
 			return;
@@ -146,7 +148,13 @@
 					</td>
 					<td class="py-1.5 pr-2">
 						{#if editingDate === day.date}
-							<form method="POST" action="?/saveDay" use:enhance class="flex items-center gap-1.5">
+							<form
+								method="POST"
+								action="?/saveDay"
+								use:enhance
+								data-inline-edit
+								class="flex items-center gap-1.5"
+							>
 								<input type="hidden" name="date" value={day.date} />
 								<input type="hidden" name="kind" value="work" />
 								<input type="hidden" name="officeId" value="" />

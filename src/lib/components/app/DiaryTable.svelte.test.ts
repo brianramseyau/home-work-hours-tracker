@@ -194,6 +194,26 @@ describe('DiaryTable', () => {
 		await expect.element(page.getByRole('button', { name: 'Save' })).toBeInTheDocument();
 	});
 
+	it('leaves an open inline edit alone on Escape from the day editor’s own ?/saveDay form', async () => {
+		// The day editor (mounted alongside this table on desktop) posts to the same `?/saveDay`
+		// action, so the guard can't just match on the form's action — it needs `data-inline-edit`
+		// specifically, or an Escape typed into the day editor's Notes textarea would reach across
+		// and cancel an unrelated open inline edit.
+		render(DiaryTable, { weeks: weeksFor(), onOpenDay: () => {} });
+		await page.getByRole('button', { name: 'Edit time block 09:00–17:06' }).click();
+
+		const otherSaveDayForm = document.createElement('form');
+		otherSaveDayForm.setAttribute('action', '?/saveDay');
+		const notesField = document.createElement('textarea');
+		otherSaveDayForm.appendChild(notesField);
+		document.body.appendChild(otherSaveDayForm);
+		notesField.focus();
+		notesField.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+		otherSaveDayForm.remove();
+
+		await expect.element(page.getByRole('button', { name: 'Save' })).toBeInTheDocument();
+	});
+
 	it('ignores keyboard shortcuts typed into a field', async () => {
 		render(DiaryTable, { weeks: weeksFor(), onOpenDay: () => {} });
 		await page.getByRole('button', { name: 'Edit time block 09:00–17:06' }).click();
