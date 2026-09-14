@@ -559,9 +559,9 @@ describe('importPreviewSchema', () => {
 					date: '2026-07-01',
 					kind: 'work' as const,
 					officeName: null,
-					start: '09:00',
-					end: '17:06',
-					breakMinutes: 30,
+					start: '09:00' as string | null,
+					end: '17:06' as string | null,
+					breakMinutes: 30 as number | null,
 					notes: null,
 					skip: false
 				}
@@ -599,6 +599,26 @@ describe('importPreviewSchema', () => {
 	it('rejects a block where the break is not shorter than the span', () => {
 		const preview = validPreview();
 		preview.rows[0].breakMinutes = 600; // longer than the 09:00–17:06 span
+		expect(importPreviewSchema.safeParse(preview).success).toBe(false);
+	});
+
+	it('rejects a timed row with end before start even when breakMinutes is null', () => {
+		const preview = validPreview();
+		preview.rows[0].start = '17:00';
+		preview.rows[0].end = '09:00';
+		preview.rows[0].breakMinutes = null;
+		expect(importPreviewSchema.safeParse(preview).success).toBe(false);
+	});
+
+	it('accepts a timed row with a null breakMinutes when the span is otherwise valid', () => {
+		const preview = validPreview();
+		preview.rows[0].breakMinutes = null;
+		expect(importPreviewSchema.safeParse(preview).success).toBe(true);
+	});
+
+	it('rejects a row dated on a non-existent calendar day (e.g. 31 November)', () => {
+		const preview = validPreview();
+		preview.rows[0].date = '2026-11-31';
 		expect(importPreviewSchema.safeParse(preview).success).toBe(false);
 	});
 });

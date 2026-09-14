@@ -6,7 +6,7 @@
 import ExcelJS from 'exceljs';
 import { z } from 'zod';
 import type { DayKind } from '$lib/core/dayType';
-import { formatIsoDate } from '$lib/core/date';
+import { formatIsoDate, parseIsoDate } from '$lib/core/date';
 import { fyBounds, fyLabel, fyStartYear as fyStartYearOf } from '$lib/core/fy';
 import { formatHm, toMinutes, validateBlock } from '$lib/core/time';
 import { claimCents } from '$lib/core/totals';
@@ -489,12 +489,18 @@ const importRowSchema = z
 		(row) =>
 			row.start === null ||
 			row.end === null ||
-			row.breakMinutes === null ||
 			// Skip when a time isn't even HH:mm; the field-level regex above already reports
 			// that, and validateBlock's own toMinutes throws rather than returning false on one.
 			!HH_MM_RE.test(row.start) ||
 			!HH_MM_RE.test(row.end) ||
-			validateBlock({ start: row.start, end: row.end, breakMinutes: row.breakMinutes }) === null,
+			// A null break is validated as 0, not skipped — `commitImport` applies exactly that
+			// same `row.breakMinutes ?? 0` fallback when writing the block, so a timed row with a
+			// null break must satisfy the same span check the written block will actually have.
+			validateBlock({
+				start: row.start,
+				end: row.end,
+				breakMinutes: row.breakMinutes ?? 0
+			}) === null,
 		{ message: 'Invalid time block', path: ['end'] }
 	);
 const importIssueSchema = z.object({ rowNumber: z.number().int(), reason: z.string() });
@@ -526,6 +532,20 @@ export const importPreviewSchema = z
 	.superRefine((preview, ctx) => {
 		const { start, end } = fyBounds(preview.fyStartYear);
 		preview.rows.forEach((row, index) => {
+			// `ISO_DATE_RE` only checks the YYYY-MM-DD shape, so a non-existent calendar date
+			// (e.g. 2026-11-31) would otherwise pass the string comparison below and reach
+			// `upsertDay` — every later `parseIsoDate` call (weekday labels, the week number, …)
+			// then throws instead of returning a display value.
+			try {
+				parseIsoDate(row.date);
+			} catch {
+				ctx.addIssue({
+					code: 'custom',
+					message: `${row.date} is not a valid calendar date`,
+					path: ['rows', index, 'date']
+				});
+				return;
+			}
 			if (row.date < start || row.date > end) {
 				ctx.addIssue({
 					code: 'custom',
