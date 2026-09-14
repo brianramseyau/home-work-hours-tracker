@@ -124,7 +124,7 @@ Totals, week numbers and display types are derived, never stored. A new FY copie
 **Layering:**
 
 - `src/lib/core/*.ts` holds pure domain logic shared by client and server: `fy`, `time`, `schedule`, `prefill`, `totals`, `dayType`, `validation` (zod).
-- `src/lib/server/*.ts` holds server-only logic: `holidays` (wraps `date-holidays`), `export` (exceljs builder), `import` (legacy parser), `clock` (today from `TZ`, plus `APP_FIXED_DATE` to pin "today" for E2E, which production never sets), `autoPrefill`.
+- `src/lib/server/*.ts` holds server-only logic: `holidays` (wraps `date-holidays`), `export` (exceljs builder), `import` (legacy parser, pure given the buffer) + `importCommit` (the DB-writing commit, kept in its own file so `import.ts` stays pure), `clock` (today from `TZ`, plus `APP_FIXED_DATE` to pin "today" for E2E, which production never sets), `autoPrefill`.
 - `src/lib/server/repo/*.ts` holds Drizzle queries that take `db` as a parameter, so they're injectable in tests.
 - `src/routes/**/+page.server.ts` wires those layers into loads and form actions (`use:enhance`, zod-validated).
 - `src/lib/branding.ts` holds `REPO_URL`, `APP_NAME` and `APP_SHORT_NAME`.

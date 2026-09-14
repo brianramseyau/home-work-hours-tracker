@@ -38,8 +38,10 @@ describe('settings page', () => {
 		expect(page.getByRole('radio', { name: 'Office Location 2' }).elements()).toHaveLength(0);
 	});
 
-	it('has a disabled historical-import link, pending Phase 06', async () => {
+	it('links to the historical import flow', async () => {
 		render(Page, { data } as unknown as Parameters<typeof render<typeof Page>>[1]);
-		await expect.element(page.getByRole('button', { name: 'Import a spreadsheet' })).toBeDisabled();
+		await expect
+			.element(page.getByRole('link', { name: 'Import a spreadsheet' }))
+			.toHaveAttribute('href', '/import');
 	});
 });
