@@ -116,6 +116,20 @@ describe('ScheduleEditor', () => {
 		await expect.element(page.getByRole('radio', { name: 'Mon office' })).toBeDisabled();
 	});
 
+	it('explains why the office toggle is disabled when there are no offices yet', async () => {
+		render(ScheduleEditor, { offices: [], includeWeekends: false, today: '2026-09-14' });
+		await expect
+			.element(page.getByText('Office is off until you add one on the Offices tab.'))
+			.toBeInTheDocument();
+	});
+
+	it('does not show the no-offices hint once an office exists', async () => {
+		render(ScheduleEditor, { offices, includeWeekends: false, today: '2026-09-14' });
+		expect(
+			page.getByText('Office is off until you add one on the Offices tab.').elements()
+		).toHaveLength(0);
+	});
+
 	it('does not clear the effective-from field if the browser resets the form', async () => {
 		render(ScheduleEditor, { offices, includeWeekends: false, today: '2026-09-14' });
 		const dateInput = page.getByLabelText('Effective from');

@@ -79,6 +79,7 @@
 	"dependencies": {
 		"better-sqlite3": "^13.0.2",
 		"date-holidays": "^3.24.4",
+		"exceljs": "^4.4.0",
 		"zod": "^4.1.13"
 	},
 	"license": "MIT"

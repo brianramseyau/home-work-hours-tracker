@@ -136,6 +136,10 @@
 		</div>
 	</div>
 
+	{#if offices.length === 0}
+		<p class="text-sm text-muted-foreground">Office is off until you add one on the Offices tab.</p>
+	{/if}
+
 	<div class="flex flex-col gap-3">
 		{#each weekIndexes as weekIndex (weekIndex)}
 			{#if cycleWeeks === '2'}

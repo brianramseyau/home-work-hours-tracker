@@ -72,7 +72,6 @@ async function main() {
 	const mark = await readFile(path('src/lib/assets/logo-mark.svg'), 'utf8');
 	const glyph = await readFile(path('src/lib/assets/favicon-glyph.svg'), 'utf8');
 	await mkdir(path('static/icons'), { recursive: true });
-	await mkdir(path('static/brand'), { recursive: true });
 
 	// Tab icon: the SVG keeps its dark-scheme style; the ICO is the fallback.
 	await copyFile(path('src/lib/assets/favicon-glyph.svg'), path('static/favicon.svg'));
@@ -105,7 +104,10 @@ async function main() {
 		);
 	}
 	// Transparent mark for the xlsx export's title band (placed on the ink band, so light).
-	await write('static/brand/logo-mark-light.png', await png(markLight, 256));
+	// Lives under src/lib/assets, not static/, so the exporter can bundle it at build time via
+	// a Vite `?inline` import instead of reading a source-tree path at server runtime — a path
+	// like `static/...` isn't guaranteed to exist relative to the process cwd once deployed.
+	await write('src/lib/assets/logo-mark-light.png', await png(markLight, 256));
 }
 
 main();
