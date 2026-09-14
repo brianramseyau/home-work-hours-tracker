@@ -220,6 +220,52 @@ describe('DayEditor', () => {
 		await expect.element(page.getByLabelText('Notes')).toHaveValue('');
 	});
 
+	it('re-syncs its blocks too, when the day prop changes to a different home day', async () => {
+		const { rerender } = render(DayEditor, {
+			day: { ...homeDay, displayType: 'office', officeId: 1, blocks: [] },
+			offices,
+			standard: STANDARD,
+			finalised: false
+		});
+
+		await rerender({
+			day: {
+				...homeDay,
+				displayType: 'home',
+				officeId: null,
+				blocks: [{ start: '08:00', end: '16:00', breakMinutes: 15 }]
+			},
+			offices,
+			standard: STANDARD,
+			finalised: false
+		});
+
+		await expect.element(page.getByLabelText('Start')).toHaveValue('08:00');
+		await expect.element(page.getByLabelText('End')).toHaveValue('16:00');
+	});
+
+	it('keeps an in-progress draft when the day prop reference changes but its values do not', async () => {
+		const { rerender } = render(DayEditor, {
+			day: homeDay,
+			offices,
+			standard: STANDARD,
+			finalised: false
+		});
+
+		await page.getByLabelText('Notes').fill('Draft note, not yet saved');
+
+		// A new object with the exact same field values, as `use:enhance`'s default reload
+		// produces on every invalidation, including ones unrelated to this date.
+		await rerender({
+			day: { ...homeDay },
+			offices,
+			standard: STANDARD,
+			finalised: false
+		});
+
+		await expect.element(page.getByLabelText('Notes')).toHaveValue('Draft note, not yet saved');
+	});
+
 	it('does not re-fire onSaved for a result that was already there when it opened', async () => {
 		setPageForm({ form: 'day', date: '2026-09-16', success: true });
 		let saved = 0;

@@ -66,9 +66,16 @@
 	}
 
 	function onKeydown(event: KeyboardEvent) {
-		// Ignore keystrokes typed into a field — the day editor's Notes textarea and the Mark
-		// range dialog's note field are both mounted alongside this table on desktop, and without
-		// this guard j/k/Enter/Esc would hijack ordinary typing there instead of reaching the field.
+		// Escape always dismisses the inline edit, even while a field inside it (the start/end
+		// time inputs) has focus — that's the natural place for focus to be once it's open.
+		if (event.key === 'Escape') {
+			cancelInlineEdit();
+			return;
+		}
+		// Ignore every other shortcut when it's typed into a field — the day editor's Notes
+		// textarea and the Mark range dialog's note field are both mounted alongside this table
+		// on desktop, and without this guard j/k/Enter would hijack ordinary typing there instead
+		// of reaching the field.
 		if (
 			event.target instanceof HTMLElement &&
 			event.target.closest('input, textarea, select, [contenteditable]')
@@ -84,8 +91,6 @@
 		} else if (event.key === 'Enter' && focusedDate) {
 			event.preventDefault();
 			onOpenDay(focusedDate);
-		} else if (event.key === 'Escape') {
-			cancelInlineEdit();
 		}
 	}
 

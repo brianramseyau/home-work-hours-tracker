@@ -31,7 +31,7 @@
 	{#each weeks as week (week[0].week)}
 		<div class="flex gap-1 lg:flex-col" role="row">
 			{#each week as day (day.date)}
-				<div role="gridcell">
+				<div role="gridcell" class="flex">
 					<button
 						type="button"
 						class="punch-cell size-3.5 rounded-[3px] outline-none focus-visible:ring-2 focus-visible:ring-ring lg:size-3"

@@ -56,11 +56,28 @@
 	// this same date doesn't render as this fresh attempt's own outcome until it actually changes.
 	const openedWithForm = untrack(() => page.form);
 
-	// Re-seeds local state whenever the `day` prop itself changes — not just on mount. Without
-	// this, the deep-link page (which has no `onSaved` and doesn't remount the editor on a
-	// same-date result) kept showing stale type/notes/blocks after "Reset to schedule" or "Clear
-	// day" reloaded `data.day`, even though the action had genuinely applied.
+	function daySignature(value: DayEditorDay): string {
+		return JSON.stringify([
+			value.date,
+			value.displayType,
+			value.officeId,
+			value.notes,
+			value.blocks
+		]);
+	}
+
+	// Not object identity: `day` is re-derived from load data on every `use:enhance` reload
+	// (including ones unrelated to this date), which produces a fresh object even when nothing
+	// about this day actually changed — re-seeding on identity alone would silently discard
+	// whatever the user was mid-typing. Comparing a signature of the values themselves means we
+	// only re-seed when the day genuinely changed underneath the form (e.g. the deep-link page's
+	// "Reset to schedule" or "Clear day", which have no `onSaved` and don't remount the editor).
+	let lastSeenSignature = untrack(() => daySignature(day));
+
 	$effect(() => {
+		const signature = daySignature(day);
+		if (signature === lastSeenSignature) return;
+		lastSeenSignature = signature;
 		uiKind = day.displayType;
 		officeId = day.officeId;
 		notes = day.notes ?? '';

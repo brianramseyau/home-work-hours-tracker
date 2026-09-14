@@ -78,11 +78,16 @@ export function claimCents(totalMinutes: number, rateCentsPerHour: number): numb
  * never accumulates past a single cent and the parts always reconcile with the whole.
  */
 export function claimCentsByGroup(minutesList: number[], rateCentsPerHour: number): number[] {
-	let cumulativeExact = 0;
+	// Accumulates integer minutes, not floating-point cents: `claimCents` rounds the exactly
+	// representable `totalMinutes × rateCentsPerHour / 60`, and summing float terms along the way
+	// (rather than the integer minutes themselves) can drift a hair off that — the exact one-cent
+	// mismatch this helper exists to remove. Telescoping this way makes the running total, and so
+	// the final entry, identical to calling `claimCents` on the whole group.
+	let cumulativeMinutes = 0;
 	let cumulativeRounded = 0;
 	return minutesList.map((minutes) => {
-		cumulativeExact += (minutes * rateCentsPerHour) / 60;
-		const roundedSoFar = Math.round(cumulativeExact);
+		cumulativeMinutes += minutes;
+		const roundedSoFar = claimCents(cumulativeMinutes, rateCentsPerHour);
 		const entryClaim = roundedSoFar - cumulativeRounded;
 		cumulativeRounded = roundedSoFar;
 		return entryClaim;

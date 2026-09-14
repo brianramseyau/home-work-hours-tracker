@@ -166,6 +166,21 @@ describe('DiaryTable', () => {
 		await expect.element(page.getByRole('button', { name: 'Save' })).toBeInTheDocument();
 	});
 
+	it('closes an inline edit on Escape even while a field inside it has focus', async () => {
+		render(DiaryTable, { weeks: weeksFor(), onOpenDay: () => {} });
+		await page.getByRole('button', { name: 'Edit time block 09:00–17:06' }).click();
+
+		const [start] = Array.from(
+			document.querySelectorAll('input[type="time"]')
+		) as HTMLInputElement[];
+		start.focus();
+		start.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+		await expect
+			.element(page.getByRole('button', { name: 'Edit time block 09:00–17:06' }))
+			.toBeInTheDocument();
+	});
+
 	it('ignores keyboard shortcuts typed into a field', async () => {
 		render(DiaryTable, { weeks: weeksFor(), onOpenDay: () => {} });
 		await page.getByRole('button', { name: 'Edit time block 09:00–17:06' }).click();
