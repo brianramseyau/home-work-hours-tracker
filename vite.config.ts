@@ -30,8 +30,10 @@ export default defineConfig({
 			}
 		}),
 		SvelteKitPWA({
-			registerType: 'autoUpdate',
-			injectRegister: 'auto',
+			// Registration is done by hand (src/lib/pwa.ts), not via the `virtual:pwa-register`
+			// module this project never imports, and app.html isn't Vite-HTML-transformed the way
+			// injectRegister's auto-injection expects — so both options below would be dead code.
+			injectRegister: null,
 			strategies: 'injectManifest',
 			includeAssets: ['favicon.svg', 'favicon.ico', 'apple-touch-icon.png'],
 			manifest: {

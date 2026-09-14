@@ -2,7 +2,7 @@
 <Container version="2">
 	<Name>home-work-hours-tracker</Name>
 	<Repository>ghcr.io/brianramseyau/home-work-hours-tracker:latest</Repository>
-	<Registry>https://ghcr.io/brianramseyau/home-work-hours-tracker</Registry>
+	<Registry>https://ghcr.io</Registry>
 	<Network>bridge</Network>
 	<MyIP/>
 	<Shell>sh</Shell>
@@ -18,43 +18,6 @@
 	<DonateText/>
 	<DonateLink/>
 	<Description>A self-hosted diary of hours worked from home. Days auto-fill from a weekly or fortnightly schedule, and it exports an accountant-ready spreadsheet for the ATO fixed-rate claim. Single-user, no auth — the home network is the trust boundary. Installs as a PWA.</Description>
-	<Networking>
-		<Mode>bridge</Mode>
-		<Publish>
-			<Port>
-				<HostPort>3000</HostPort>
-				<ContainerPort>3000</ContainerPort>
-				<Protocol>tcp</Protocol>
-			</Port>
-		</Publish>
-	</Networking>
-	<Data>
-		<Volume>
-			<HostDir>/mnt/user/appdata/home-work-hours-tracker</HostDir>
-			<ContainerDir>/data</ContainerDir>
-			<Mode>rw</Mode>
-		</Volume>
-	</Data>
-	<Environment>
-		<Variable>
-			<Value>99</Value>
-			<Name>PUID</Name>
-			<Target>PUID</Target>
-			<Mode/>
-		</Variable>
-		<Variable>
-			<Value>100</Value>
-			<Name>PGID</Name>
-			<Target>PGID</Target>
-			<Mode/>
-		</Variable>
-		<Variable>
-			<Value>Australia/Melbourne</Value>
-			<Name>TZ</Name>
-			<Target>TZ</Target>
-			<Mode/>
-		</Variable>
-	</Environment>
 	<Config Name="WebUI Port" Target="3000" Default="3000" Mode="tcp" Description="The port the app listens on." Type="Port" Display="always" Required="true" Mask="false">3000</Config>
 	<Config Name="Data" Target="/data" Default="/mnt/user/appdata/home-work-hours-tracker" Mode="rw" Description="SQLite database and any generated files. Back this up." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/home-work-hours-tracker</Config>
 	<Config Name="PUID" Target="PUID" Default="99" Mode="" Description="User ID that should own files in /data." Type="Variable" Display="always" Required="false" Mask="false">99</Config>

@@ -9,7 +9,7 @@
 	},
 	"scripts": {
 		"dev": "vite dev",
-		"build": "vite build",
+		"build": "DATABASE_URL=\"${DATABASE_URL:-/tmp/build-time.db}\" vite build",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo '' && (simple-git-hooks || echo 'git hooks not installed')",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
@@ -80,7 +80,9 @@
 		"vitest-browser-svelte": "^2.1.1",
 		"workbox-core": "^7.4.1",
 		"workbox-precaching": "^7.4.1",
-		"workbox-recipes": "^7.4.1"
+		"workbox-recipes": "^7.4.1",
+		"workbox-routing": "^7.4.1",
+		"workbox-strategies": "^7.4.1"
 	},
 	"dependencies": {
 		"better-sqlite3": "^13.0.2",

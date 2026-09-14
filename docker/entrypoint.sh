@@ -7,6 +7,19 @@ set -e
 PUID="${PUID:-99}"
 PGID="${PGID:-100}"
 
+case "$PUID" in
+	'' | *[!0-9]*)
+		echo "entrypoint: PUID must be numeric, got '$PUID'" >&2
+		exit 1
+		;;
+esac
+case "$PGID" in
+	'' | *[!0-9]*)
+		echo "entrypoint: PGID must be numeric, got '$PGID'" >&2
+		exit 1
+		;;
+esac
+
 if [ "$(id -u)" = "0" ]; then
 	if ! getent group "$PGID" >/dev/null 2>&1; then
 		addgroup -g "$PGID" appgroup

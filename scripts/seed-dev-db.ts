@@ -6,6 +6,16 @@ import { addDays } from '../src/lib/core/date';
 import { fyStartYear } from '../src/lib/core/fy';
 import type { Day } from '../src/lib/core/dayType';
 import { createDb } from '../src/lib/server/db/create';
+import {
+	days,
+	financialYears,
+	holidays,
+	homeBlocks,
+	offices,
+	scheduleDays,
+	schedules,
+	settings
+} from '../src/lib/server/db/schema';
 import { ensurePrefilled } from '../src/lib/server/autoPrefill';
 import { createOffice } from '../src/lib/server/repo/offices';
 import { upsertDay } from '../src/lib/server/repo/days';
@@ -35,6 +45,23 @@ async function main() {
 	const dbPath = process.env.DATABASE_URL;
 	if (!dbPath) throw new Error('DATABASE_URL is not set');
 	const db = createDb(dbPath);
+
+	// Actually clear every table first, so "overwrites" is true rather than "merges into
+	// whatever is already there" — this is also what makes it safe to source README/social
+	// screenshots from, since anything pre-existing (including a real diary) would otherwise
+	// linger alongside the synthetic rows.
+	for (const table of [
+		homeBlocks,
+		days,
+		scheduleDays,
+		schedules,
+		holidays,
+		offices,
+		financialYears,
+		settings
+	]) {
+		db.delete(table).run();
+	}
 
 	updateSettings(db, {
 		fullName: 'John Doe',
@@ -76,7 +103,7 @@ async function main() {
 	// up in the demo (include_weekends defaults off).
 	const startOfCurrentFy = `${fyStartYear(TODAY)}-07-01`;
 	const splitDay = addDays(startOfCurrentFy, 14); // Wed
-	const sickDay = addDays(startOfCurrentFy, 16); // Thu
+	const sickDay = addDays(startOfCurrentFy, 16); // Fri
 	const leaveStart = addDays(startOfCurrentFy, 21); // Wed–Fri
 
 	upsertDay(

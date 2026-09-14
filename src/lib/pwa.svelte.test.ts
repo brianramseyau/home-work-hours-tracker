@@ -6,11 +6,11 @@ describe('registerServiceWorker', () => {
 		vi.unstubAllGlobals();
 	});
 
-	it('registers the service worker when the API is available', async () => {
+	it('registers the service worker in production when the API is available', async () => {
 		const register = vi.fn().mockResolvedValue(undefined);
 		vi.stubGlobal('navigator', { serviceWorker: { register } });
 
-		registerServiceWorker();
+		registerServiceWorker(true);
 
 		expect(register).toHaveBeenCalledWith('/service-worker.js');
 	});
@@ -19,13 +19,22 @@ describe('registerServiceWorker', () => {
 		const register = vi.fn().mockRejectedValue(new Error('nope'));
 		vi.stubGlobal('navigator', { serviceWorker: { register } });
 
-		expect(() => registerServiceWorker()).not.toThrow();
+		expect(() => registerServiceWorker(true)).not.toThrow();
 		await Promise.resolve(); // let the rejection's .catch() run
 	});
 
 	it('does nothing when the API is unavailable', () => {
 		vi.stubGlobal('navigator', {});
 
-		expect(() => registerServiceWorker()).not.toThrow();
+		expect(() => registerServiceWorker(true)).not.toThrow();
+	});
+
+	it('does nothing outside production (e.g. vite dev, which emits no Workbox worker)', () => {
+		const register = vi.fn();
+		vi.stubGlobal('navigator', { serviceWorker: { register } });
+
+		registerServiceWorker(false);
+
+		expect(register).not.toHaveBeenCalled();
 	});
 });
