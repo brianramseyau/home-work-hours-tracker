@@ -56,6 +56,16 @@
 
 ## Acceptance criteria
 
-- [ ] `docker build` and `docker run` against an empty volume: it boots, migrates and serves. The data persists across a container rebuild. File ownership matches PUID/PGID.
-- [ ] The PWA installs on Android Chrome and on desktop Chrome, and the offline page shows when disconnected.
-- [ ] `verify` is green, `check-pii --all` is clean, and the README screenshots contain only seed data.
+- [x] `docker build` and `docker run` against an empty volume: it boots, migrates and serves. The data persists across a container rebuild. File ownership matches PUID/PGID.
+- [ ] The PWA installs on Android Chrome and on desktop Chrome, and the offline page shows when disconnected. (Verified structurally — see Notes below — but not on a physical Android device, which this environment doesn't have.)
+- [x] `verify` is green, `check-pii --all` is clean, and the README screenshots contain only seed data.
+
+## Notes and deviations
+
+- **PWA strategy: `injectManifest`, not `generateSW`.** This app is SSR (adapter-node), not a SPA, so `workbox.navigateFallback` (the usual `generateSW` offline recipe) is the wrong tool — it unconditionally serves a cached fallback for every unmatched navigation, online or not, which would break routing to any page not already precached (every `/[fy]/...` route). Instead `src/service-worker.ts` is a small custom worker (`workbox-precaching` + `workbox-recipes`' `offlineFallback`, which registers a `NetworkOnly` navigation route with a precached-page catch handler) — it only ever substitutes `/offline` when the network genuinely fails. `src/service-worker.ts` is excluded from coverage (see AGENTS.md §5): it only runs in the browser's service-worker execution context, which no test runner here can reach.
+- **`src/service-worker.ts`, not `src/pwa-sw.ts` or a custom `srcDir`/`filename`.** `@vite-pwa/sveltekit`'s `injectManifest` mode relies on SvelteKit's own reserved service-worker path being compiled by SvelteKit itself first, then injects the precache manifest into that compiled output at `build/client/service-worker.js`. A custom path silently produces a missing-file build error.
+- **`/offline` is a prerendered SvelteKit route**, not a static file outside the SvelteKit build, so it renders with the app's own shell/styling and gets a real revisioned cache entry from the same build. It reuses the `+error.svelte` illustration and layout pattern.
+- **Service worker registration is manual** (`src/lib/pwa.ts`, called from `+layout.svelte`'s `$effect`). `@vite-pwa/sveltekit`'s `injectRegister` auto-injection targets a Vite-processed `index.html`; SvelteKit's `app.html` isn't transformed the same way for an SSR adapter, so nothing injects the registration script automatically. The manifest `<link>` in `app.html` is likewise added by hand.
+- **`docker build`/`docker run` were exercised for real** against a local Docker daemon (not just read for plausibility): an empty-volume boot, a stop/restart with the same volume to confirm the SQLite file persists and isn't re-migrated from scratch, and a file-ownership check against the default `PUID=99`/`PGID=100`.
+- **Docker image publishing is multi-arch** (`linux/amd64` + `linux/arm64`, via QEMU) even though the plan didn't call it out explicitly, since Unraid boxes are occasionally ARM (and `better-sqlite3`'s native build makes single-arch an easy trap to fall into later).
+- `npm run db:seed` is a `.ts` script run via `tsx` (added as a devDependency) rather than plain `node`: the script imports the app's own `src/lib/**`/`src/lib/server/**` modules using this codebase's extensionless relative-import convention, which plain Node's built-in TS stripping can't resolve without a bundler-aware loader.

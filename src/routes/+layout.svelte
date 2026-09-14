@@ -11,11 +11,17 @@
 	import { Toaster } from '$lib/components/ui/sonner';
 	import { APP_NAME, APP_SHORT_NAME } from '$lib/branding';
 	import { navItems } from '$lib/nav';
+	import { registerServiceWorker } from '$lib/pwa';
 	import type { LayoutProps } from './$types';
 
 	let { data, children }: LayoutProps = $props();
 
 	const items = $derived(navItems(data.currentFy.slug));
+
+	// $effect bodies only ever run client-side, so this never runs during SSR.
+	$effect(() => {
+		registerServiceWorker();
+	});
 
 	// A single quiet toast when auto-prefill materialises new days — no banner, no prompt. Most
 	// navigations find nothing to fill (the watermark already reached today), so this stays
