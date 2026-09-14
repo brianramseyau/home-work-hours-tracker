@@ -10,6 +10,14 @@ permissions:
   contents: read
   packages: write
 
+# The `develop` tag is mutable and rebuilt on every push to main. Without this, two pushes in
+# quick succession start concurrent jobs, and whichever happens to finish last wins the tag —
+# an older commit's image can overwrite a newer one. `cancel-in-progress: false` queues instead
+# of cancelling, so runs for the same ref still complete (and publish) in commit order.
+concurrency:
+  group: docker-publish-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest

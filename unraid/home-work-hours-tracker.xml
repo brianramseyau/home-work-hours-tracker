@@ -1,7 +1,10 @@
 <?xml version="1.0"?>
 <Container version="2">
 	<Name>home-work-hours-tracker</Name>
-	<Repository>ghcr.io/brianramseyau/home-work-hours-tracker:latest</Repository>
+	<!-- :latest only exists once a version tag is cut (see .github/workflows/docker-publish.yml);
+	     switch this to :latest after the first release. Until then :develop (rebuilt on every
+	     push to main) is the tag that's actually pullable. -->
+	<Repository>ghcr.io/brianramseyau/home-work-hours-tracker:develop</Repository>
 	<Registry>https://ghcr.io</Registry>
 	<Network>bridge</Network>
 	<MyIP/>
