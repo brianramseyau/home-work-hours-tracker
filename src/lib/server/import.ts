@@ -8,10 +8,11 @@ import { z } from 'zod';
 import type { DayKind } from '$lib/core/dayType';
 import { formatIsoDate } from '$lib/core/date';
 import { fyBounds, fyLabel, fyStartYear as fyStartYearOf } from '$lib/core/fy';
-import { formatHm, toMinutes } from '$lib/core/time';
+import { formatHm, toMinutes, validateBlock } from '$lib/core/time';
 import { claimCents } from '$lib/core/totals';
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const HH_MM_RE = /^([0-1]\d|2[0-3]):([0-5]\d)$/;
 // Matches "Leave start" / "Xmas Hols START" — a marker note ending in the word start/end.
 const RANGE_START_RE = /^.*\S\s+start$/i;
 const RANGE_END_RE = /^.*\S\s+end$/i;
@@ -167,6 +168,12 @@ function isOfficeCandidate(note: string): boolean {
 	return /^\S+$/.test(note) && note.length <= 40;
 }
 
+/** "Sick" with an uncertainty marker (`Sick?`, `Sick*`) is still sick — checked on the stripped
+ *  form so it's never instead proposed as a new office named "Sick" (see `resolveOfficeName`). */
+function isSickNote(noteText: string): boolean {
+	return /^sick$/i.test(stripUncertaintyMarker(noteText));
+}
+
 function resolveOfficeName(
 	noteText: string | null,
 	offices: ImportOffice[]
@@ -174,17 +181,16 @@ function resolveOfficeName(
 	if (!noteText) return { officeName: null, proposed: false };
 	const existing = findExistingOffice(noteText, offices);
 	if (existing) return { officeName: existing, proposed: false };
-	// Excluded so "Sick" and range markers never get proposed as offices — both would otherwise
-	// pass the single-word/no-space shape isOfficeCandidate looks for.
-	if (/^sick$/i.test(noteText)) return { officeName: null, proposed: false };
-	if (RANGE_START_RE.test(noteText) || RANGE_END_RE.test(noteText)) {
+	// Every check below runs on the stripped form: an uncertainty marker must never change what a
+	// note *means* (a marker-only note strips to "", and "Sick*" must still read as sick, not as
+	// a proposed office called "Sick" that every later exact "Sick" note would then match).
+	const stripped = stripUncertaintyMarker(noteText);
+	if (!stripped) return { officeName: null, proposed: false };
+	if (isSickNote(stripped)) return { officeName: null, proposed: false };
+	if (RANGE_START_RE.test(stripped) || RANGE_END_RE.test(stripped)) {
 		return { officeName: null, proposed: false };
 	}
-	// Stripped, not the raw note: a note like "CityOffice?" must propose (and later match) the
-	// same office as a plain "CityOffice" row, or the marker'd variant creates a second office
-	// that can never be found again by `findExistingOffice`'s own normalized comparison.
-	if (isOfficeCandidate(noteText))
-		return { officeName: stripUncertaintyMarker(noteText), proposed: true };
+	if (isOfficeCandidate(stripped)) return { officeName: stripped, proposed: true };
 	return { officeName: null, proposed: false };
 }
 
@@ -382,7 +388,7 @@ export async function parseLegacyWorkbook(
 			continue;
 		}
 
-		if (noteText !== null && /^sick$/i.test(noteText)) {
+		if (noteText !== null && isSickNote(noteText)) {
 			rows.push({
 				rowNumber: raw.rowNumber,
 				date: raw.date,
@@ -462,17 +468,35 @@ export async function parseLegacyWorkbook(
 // convenient typing, it's the trust boundary. `importPreviewSchema.safeParse` is what stands
 // between a crafted `preview={}` (or `[]`, `5`, a partial object, …) and a 500 from
 // `preview.rows.filter` or similar reaching straight for an assumed-present property.
-const importRowSchema = z.object({
-	rowNumber: z.number().int(),
-	date: z.string().regex(ISO_DATE_RE),
-	kind: z.enum(['work', 'leave', 'sick', 'public_holiday', 'off']),
-	officeName: z.string().nullable(),
-	start: z.string().nullable(),
-	end: z.string().nullable(),
-	breakMinutes: z.number().nullable(),
-	notes: z.string().nullable(),
-	skip: z.boolean()
-});
+const importRowSchema = z
+	.object({
+		rowNumber: z.number().int(),
+		date: z.string().regex(ISO_DATE_RE),
+		kind: z.enum(['work', 'leave', 'sick', 'public_holiday', 'off']),
+		officeName: z.string().nullable(),
+		start: z.string().regex(HH_MM_RE).nullable(),
+		end: z.string().regex(HH_MM_RE).nullable(),
+		breakMinutes: z.number().int().min(0).nullable(),
+		notes: z.string().nullable(),
+		skip: z.boolean()
+	})
+	// The type-level checks above (HH:mm shape, a non-negative integer break) aren't enough on
+	// their own to keep a bad row from reaching `upsertDay` (which does no validation of its
+	// own) and then permanently 500ing every later read of the year — `end` must still be after
+	// `start` with a break shorter than the span, exactly what `core/time.ts`'s own writers
+	// (`dayHomeMinutes` → `blockMinutes` → `toMinutes`) assume of a persisted block.
+	.refine(
+		(row) =>
+			row.start === null ||
+			row.end === null ||
+			row.breakMinutes === null ||
+			// Skip when a time isn't even HH:mm; the field-level regex above already reports
+			// that, and validateBlock's own toMinutes throws rather than returning false on one.
+			!HH_MM_RE.test(row.start) ||
+			!HH_MM_RE.test(row.end) ||
+			validateBlock({ start: row.start, end: row.end, breakMinutes: row.breakMinutes }) === null,
+		{ message: 'Invalid time block', path: ['end'] }
+	);
 const importIssueSchema = z.object({ rowNumber: z.number().int(), reason: z.string() });
 const importTotalsSchema = z.object({
 	hours: z.number().nullable(),
@@ -480,13 +504,34 @@ const importTotalsSchema = z.object({
 });
 const appTotalsSchema = z.object({ hours: z.number(), claimCents: z.number().nullable() });
 
-export const importPreviewSchema = z.object({
-	fyStartYear: z.number().int(),
-	rateCentsPerHour: z.number().nullable(),
-	proposedOffices: z.array(z.string()),
-	rows: z.array(importRowSchema),
-	issues: z.array(importIssueSchema),
-	sheetTotals: importTotalsSchema,
-	appTotals: appTotalsSchema,
-	mismatch: z.boolean()
-});
+export const importPreviewSchema = z
+	.object({
+		// Bounded the same as `core/validation.ts`'s `yearSchema` — an arbitrary large/negative
+		// year is never a real FY, and `fyBounds` would otherwise happily hand back a bogus range.
+		fyStartYear: z.number().int().min(2000).max(2100),
+		rateCentsPerHour: z.number().nullable(),
+		proposedOffices: z.array(z.string()),
+		rows: z.array(importRowSchema),
+		issues: z.array(importIssueSchema),
+		sheetTotals: importTotalsSchema,
+		appTotals: appTotalsSchema,
+		mismatch: z.boolean()
+	})
+	// The parser itself only ever proposes dates inside `fyBounds(fyStartYear)` (an out-of-range
+	// date becomes an `issues` entry instead) — re-checked here because the preview is untrusted,
+	// client-supplied JSON by the time it reaches this schema. Without this, a single crafted row
+	// dated e.g. 9999-12-31 reaches `commitImport`'s `raiseWatermark`, which would push the
+	// prefill watermark far into the future and silently stop `ensurePrefilled` from ever
+	// materialising another day (see `autoPrefill.ts`'s `startOfPlanning`).
+	.superRefine((preview, ctx) => {
+		const { start, end } = fyBounds(preview.fyStartYear);
+		preview.rows.forEach((row, index) => {
+			if (row.date < start || row.date > end) {
+				ctx.addIssue({
+					code: 'custom',
+					message: `${row.date} is outside ${fyLabel(preview.fyStartYear)}`,
+					path: ['rows', index, 'date']
+				});
+			}
+		});
+	});

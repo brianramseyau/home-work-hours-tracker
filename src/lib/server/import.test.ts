@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildLegacyWorkbook, standardHomeRow } from './import.fixtures';
-import { parseLegacyWorkbook } from './import';
+import { importPreviewSchema, parseLegacyWorkbook } from './import';
 
 const OFFICES = [
 	{ id: 1, name: 'Office Location 1' },
@@ -99,6 +99,34 @@ describe('parseLegacyWorkbook', () => {
 
 		expect(preview.rows[0]).toMatchObject({ kind: 'sick', officeName: null });
 		expect(preview.proposedOffices).toEqual([]);
+	});
+
+	it('maps "Sick*" (an uncertainty-marked keyword) to sick, not a proposed office named "Sick"', async () => {
+		const buffer = await buildLegacyWorkbook({
+			fyStartYear: 2026,
+			rows: [
+				{ date: '2026-07-01', notes: 'Sick*' },
+				{ date: '2026-07-02', notes: 'Sick' }
+			]
+		});
+		const preview = await parseLegacyWorkbook(buffer, { offices: OFFICES });
+
+		expect(preview.rows[0]).toMatchObject({ kind: 'sick', officeName: null });
+		// A later plain "Sick" note must still read as sick too — not as an office day, which is
+		// what would happen if "Sick*" had been proposed (and accepted) as an office called "Sick".
+		expect(preview.rows[1]).toMatchObject({ kind: 'sick', officeName: null });
+		expect(preview.proposedOffices).toEqual([]);
+	});
+
+	it('treats a marker-only note ("?") as no note at all, not a proposed office named ""', async () => {
+		const buffer = await buildLegacyWorkbook({
+			fyStartYear: 2026,
+			rows: [{ date: '2026-07-01', notes: '?' }]
+		});
+		const preview = await parseLegacyWorkbook(buffer, { offices: OFFICES });
+
+		expect(preview.proposedOffices).toEqual([]);
+		expect(preview.rows[0].officeName).toBeNull();
 	});
 
 	it('expands a "start"…"end" marker range into leave for every date in between, inclusive', async () => {
@@ -516,5 +544,61 @@ describe('parseLegacyWorkbook', () => {
 		const wb = new ExcelJS.Workbook();
 		const buffer = Buffer.from(await wb.xlsx.writeBuffer());
 		await expect(parseLegacyWorkbook(buffer, { offices: OFFICES })).rejects.toThrow(/no sheets/);
+	});
+});
+
+describe('importPreviewSchema', () => {
+	function validPreview() {
+		return {
+			fyStartYear: 2026,
+			rateCentsPerHour: 70,
+			proposedOffices: [],
+			rows: [
+				{
+					rowNumber: 3,
+					date: '2026-07-01',
+					kind: 'work' as const,
+					officeName: null,
+					start: '09:00',
+					end: '17:06',
+					breakMinutes: 30,
+					notes: null,
+					skip: false
+				}
+			],
+			issues: [],
+			sheetTotals: { hours: 7.6, claimCents: 532 },
+			appTotals: { hours: 7.6, claimCents: 532 },
+			mismatch: false
+		};
+	}
+
+	it('accepts a well-formed preview', () => {
+		expect(importPreviewSchema.safeParse(validPreview()).success).toBe(true);
+	});
+
+	it('rejects a row date outside the preview’s own FY (a crafted preview)', () => {
+		const preview = validPreview();
+		preview.rows[0].date = '9999-12-31';
+		const result = importPreviewSchema.safeParse(preview);
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects a non-HH:mm start time', () => {
+		const preview = validPreview();
+		preview.rows[0].start = '9am';
+		expect(importPreviewSchema.safeParse(preview).success).toBe(false);
+	});
+
+	it('rejects a negative breakMinutes', () => {
+		const preview = validPreview();
+		preview.rows[0].breakMinutes = -30;
+		expect(importPreviewSchema.safeParse(preview).success).toBe(false);
+	});
+
+	it('rejects a block where the break is not shorter than the span', () => {
+		const preview = validPreview();
+		preview.rows[0].breakMinutes = 600; // longer than the 09:00–17:06 span
+		expect(importPreviewSchema.safeParse(preview).success).toBe(false);
 	});
 });
