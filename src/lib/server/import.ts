@@ -4,6 +4,7 @@
 // copied from ev-charging-log's import.ts: find columns by header label, not fixed cell refs).
 
 import ExcelJS from 'exceljs';
+import { z } from 'zod';
 import type { DayKind } from '$lib/core/dayType';
 import { formatIsoDate } from '$lib/core/date';
 import { fyBounds, fyLabel, fyStartYear as fyStartYearOf } from '$lib/core/fy';
@@ -77,10 +78,29 @@ function normalizeLabel(value: ExcelJS.CellValue): string {
 	return String(value).trim().toLowerCase();
 }
 
+/**
+ * A formula cell (`{formula, result}`) resolves to its cached `result` — a legacy sheet computing
+ * `Total`, `Flat Rate`, or a date with a live formula (rather than a literal value) would
+ * otherwise read as null everywhere below, silently understating hours/claim rather than erroring.
+ * Every other shape (primitive, `Date`, rich text) passes through unchanged.
+ */
+function resolveFormula(value: ExcelJS.CellValue): ExcelJS.CellValue {
+	if (
+		typeof value === 'object' &&
+		value !== null &&
+		!(value instanceof Date) &&
+		'result' in value
+	) {
+		return value.result;
+	}
+	return value;
+}
+
 function asNumber(value: ExcelJS.CellValue): number | null {
-	if (typeof value === 'number') return value;
-	if (typeof value === 'string' && value.trim() !== '' && !Number.isNaN(Number(value))) {
-		return Number(value);
+	const resolved = resolveFormula(value);
+	if (typeof resolved === 'number') return resolved;
+	if (typeof resolved === 'string' && resolved.trim() !== '' && !Number.isNaN(Number(resolved))) {
+		return Number(resolved);
 	}
 	return null;
 }
@@ -90,44 +110,51 @@ function excelSerialToUtcDate(serial: number): Date {
 }
 
 function readDateCell(value: ExcelJS.CellValue): string | null {
-	if (value instanceof Date) return formatIsoDate(value);
-	if (typeof value === 'number') return formatIsoDate(excelSerialToUtcDate(value));
-	if (typeof value === 'string' && ISO_DATE_RE.test(value.trim())) return value.trim();
+	const resolved = resolveFormula(value);
+	if (resolved instanceof Date) return formatIsoDate(resolved);
+	if (typeof resolved === 'number') return formatIsoDate(excelSerialToUtcDate(resolved));
+	if (typeof resolved === 'string' && ISO_DATE_RE.test(resolved.trim())) return resolved.trim();
 	return null;
 }
 
 /** A time-of-day cell: a fraction of a day, read via UTC getters so no host timezone leaks in. */
 function readTimeCell(value: ExcelJS.CellValue): string | null {
-	if (value instanceof Date) {
-		return formatHm({ hours: value.getUTCHours(), minutes: value.getUTCMinutes() });
+	const resolved = resolveFormula(value);
+	if (resolved instanceof Date) {
+		return formatHm({ hours: resolved.getUTCHours(), minutes: resolved.getUTCMinutes() });
 	}
-	if (typeof value === 'number') {
-		const totalMinutes = Math.round((value % 1) * 24 * 60) % (24 * 60);
+	if (typeof resolved === 'number') {
+		const totalMinutes = Math.round((resolved % 1) * 24 * 60) % (24 * 60);
 		return formatHm({ hours: Math.floor(totalMinutes / 60), minutes: totalMinutes % 60 });
 	}
 	return null;
 }
 
 function readNoteCell(value: ExcelJS.CellValue): string | null {
-	if (value == null) return null;
-	if (typeof value === 'object' && 'richText' in value) {
-		const text = value.richText
+	const resolved = resolveFormula(value);
+	if (resolved == null) return null;
+	if (typeof resolved === 'object' && 'richText' in resolved) {
+		const text = resolved.richText
 			.map((run) => run.text)
 			.join('')
 			.trim();
 		return text || null;
 	}
-	const text = String(value).trim();
+	const text = String(resolved).trim();
 	return text || null;
 }
 
-/** Strips a trailing `*`/`?` (an uncertainty marker in the legacy notes) for matching only. */
-function normalizeOfficeName(name: string): string {
+/** Strips a trailing `*`/`?` (an uncertainty marker in the legacy notes). */
+function stripUncertaintyMarker(name: string): string {
 	return name
 		.trim()
 		.replace(/[*?]+$/, '')
-		.trim()
-		.toLowerCase();
+		.trim();
+}
+
+/** Same as `stripUncertaintyMarker`, lowercased — for matching only, never for display. */
+function normalizeOfficeName(name: string): string {
+	return stripUncertaintyMarker(name).toLowerCase();
 }
 
 function findExistingOffice(note: string, offices: ImportOffice[]): string | null {
@@ -153,7 +180,11 @@ function resolveOfficeName(
 	if (RANGE_START_RE.test(noteText) || RANGE_END_RE.test(noteText)) {
 		return { officeName: null, proposed: false };
 	}
-	if (isOfficeCandidate(noteText)) return { officeName: noteText, proposed: true };
+	// Stripped, not the raw note: a note like "CityOffice?" must propose (and later match) the
+	// same office as a plain "CityOffice" row, or the marker'd variant creates a second office
+	// that can never be found again by `findExistingOffice`'s own normalized comparison.
+	if (isOfficeCandidate(noteText))
+		return { officeName: stripUncertaintyMarker(noteText), proposed: true };
 	return { officeName: null, proposed: false };
 }
 
@@ -425,3 +456,37 @@ export async function parseLegacyWorkbook(
 		mismatch
 	};
 }
+
+// The review step round-trips the whole preview through a hidden form field, so the commit
+// action receives it as untrusted, client-supplied JSON — the shape below is not merely
+// convenient typing, it's the trust boundary. `importPreviewSchema.safeParse` is what stands
+// between a crafted `preview={}` (or `[]`, `5`, a partial object, …) and a 500 from
+// `preview.rows.filter` or similar reaching straight for an assumed-present property.
+const importRowSchema = z.object({
+	rowNumber: z.number().int(),
+	date: z.string().regex(ISO_DATE_RE),
+	kind: z.enum(['work', 'leave', 'sick', 'public_holiday', 'off']),
+	officeName: z.string().nullable(),
+	start: z.string().nullable(),
+	end: z.string().nullable(),
+	breakMinutes: z.number().nullable(),
+	notes: z.string().nullable(),
+	skip: z.boolean()
+});
+const importIssueSchema = z.object({ rowNumber: z.number().int(), reason: z.string() });
+const importTotalsSchema = z.object({
+	hours: z.number().nullable(),
+	claimCents: z.number().nullable()
+});
+const appTotalsSchema = z.object({ hours: z.number(), claimCents: z.number().nullable() });
+
+export const importPreviewSchema = z.object({
+	fyStartYear: z.number().int(),
+	rateCentsPerHour: z.number().nullable(),
+	proposedOffices: z.array(z.string()),
+	rows: z.array(importRowSchema),
+	issues: z.array(importIssueSchema),
+	sheetTotals: importTotalsSchema,
+	appTotals: appTotalsSchema,
+	mismatch: z.boolean()
+});

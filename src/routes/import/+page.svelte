@@ -69,13 +69,13 @@
 			{#if uploadError}
 				<p class="text-sm text-destructive">{uploadError}</p>
 			{/if}
+			{#if commitError}
+				<p class="text-sm text-destructive">{commitError}</p>
+			{/if}
 		</section>
 	{:else}
 		{@const issueRowNumbers = new Set(preview.issues.map((issue) => issue.rowNumber))}
 		{@const importableRows = preview.rows.filter((row) => !row.skip)}
-		{@const visibleRows = importableRows.filter(
-			(row) => !showIssuesOnly || issueRowNumbers.has(row.rowNumber)
-		)}
 		<section class="flex flex-col gap-4 rounded-lg border border-border p-5">
 			<h2 class="font-display text-lg font-semibold">Step 2 — Review</h2>
 			<p class="text-sm text-muted-foreground">
@@ -190,9 +190,9 @@
 							</tr>
 						</thead>
 						<tbody>
-							{#each visibleRows as row (row.rowNumber)}
+							{#each importableRows as row (row.rowNumber)}
 								{@const hasIssue = issueRowNumbers.has(row.rowNumber)}
-								<tr class={hasIssue ? 'bg-rosehip/10' : ''}>
+								<tr class={hasIssue ? 'bg-rosehip/10' : ''} hidden={showIssuesOnly && !hasIssue}>
 									<td class="px-2 py-1.5">
 										<input
 											type="checkbox"

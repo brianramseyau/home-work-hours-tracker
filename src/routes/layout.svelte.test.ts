@@ -80,6 +80,13 @@ describe('root layout', () => {
 			await expect.element(page.getByText('Imported 1 day')).toBeInTheDocument();
 		});
 
+		it('does not toast for a non-integer imported value (a hand-edited URL)', async () => {
+			appStatePage.url = new URL('http://localhost/fy27?imported=1.5') as typeof appStatePage.url;
+			render(Layout, { data, children } as unknown as Parameters<typeof render<typeof Layout>>[1]);
+			await expect.element(page.getByRole('main')).toBeInTheDocument();
+			await expect.element(page.getByText(/Imported/)).not.toBeInTheDocument();
+		});
+
 		it('does not toast when imported=0', async () => {
 			appStatePage.url = new URL('http://localhost/fy27?imported=0') as typeof appStatePage.url;
 			render(Layout, { data, children } as unknown as Parameters<typeof render<typeof Layout>>[1]);

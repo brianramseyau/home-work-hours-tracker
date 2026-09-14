@@ -199,13 +199,18 @@ describe('commitImport', () => {
 	});
 
 	it('replaces an existing prefill row unconditionally', () => {
-		commitImport(db, {
-			fyStartYear: 2026,
-			rateCentsPerHour: 70,
-			rows: [row({ date: '2026-07-01' })],
-			officeResolutions: [],
-			replaceManualEdits: false
-		});
+		upsertDay(
+			db,
+			{
+				date: '2026-07-01',
+				kind: 'work',
+				officeId: null,
+				notes: null,
+				source: 'prefill',
+				blocks: [{ start: '09:00', end: '17:06', breakMinutes: 30 }]
+			},
+			'2026-07-01T00:00:00.000Z'
+		);
 		commitImport(db, {
 			fyStartYear: 2026,
 			rateCentsPerHour: 70,

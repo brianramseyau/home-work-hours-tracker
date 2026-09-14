@@ -401,6 +401,22 @@ describe('parseLegacyWorkbook', () => {
 		expect(preview.rows[0].breakMinutes).toBe(30);
 	});
 
+	it('resolves a formula cell (e.g. a live Total or Flat Rate) to its cached result', async () => {
+		const buffer = await buildLegacyWorkbook({
+			fyStartYear: 2026,
+			rows: [{ date: '2026-07-01', start: '09:00', end: '17:06' }]
+		});
+		const ExcelJS = (await import('exceljs')).default;
+		const wb = new ExcelJS.Workbook();
+		await wb.xlsx.load(buffer as unknown as ArrayBuffer);
+		// A formula cell round-trips as { formula, result } — not a plain number/string/Date.
+		wb.worksheets[0].getCell(3, 5).value = { formula: 'E3', result: 7.6 };
+		const rebuilt = Buffer.from(await wb.xlsx.writeBuffer());
+
+		const preview = await parseLegacyWorkbook(rebuilt, { offices: OFFICES });
+		expect(preview.rows[0].breakMinutes).toBe(30);
+	});
+
 	it('reads a date cell stored as plain ISO text', async () => {
 		const buffer = await buildLegacyWorkbook({
 			fyStartYear: 2026,

@@ -33,7 +33,7 @@
 		const imported = page.url.searchParams.get('imported');
 		if (imported === null) return;
 		const count = Number(imported);
-		if (count > 0) {
+		if (Number.isInteger(count) && count > 0) {
 			toast.success(`Imported ${count} day${count === 1 ? '' : 's'}`);
 		}
 		// Plain history.replaceState, not SvelteKit's own: this only tidies the address bar after

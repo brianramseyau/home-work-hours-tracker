@@ -86,9 +86,32 @@ test('import: upload a legacy workbook, review it, and commit', async ({ page })
 	await expect(page).toHaveURL(/\/fy27/);
 	await expect(page.getByText('Imported 3 days')).toBeVisible();
 
-	// The timed row committed as a Home day with the literal times from the sheet.
+	// The timed row committed as a Home day with the sheet's literal times and derived break —
+	// not just the right *kind*, which auto-prefill would already produce for this date on its
+	// own (09:00–17:06/30 min is also this suite's standard schedule).
 	await page.goto('/fy27/day/2026-07-06');
 	await expect(page.getByRole('radio', { name: 'Home', exact: true })).toHaveAttribute(
+		'data-state',
+		'on'
+	);
+	await expect(page.getByLabel('Start')).toHaveValue('09:00');
+	await expect(page.getByLabel('End')).toHaveValue('17:06');
+	await expect(page.getByLabel('Break (min)')).toHaveValue('30');
+
+	// The Sick day.
+	await page.goto('/fy27/day/2026-07-07');
+	await expect(page.getByRole('radio', { name: 'Sick', exact: true })).toHaveAttribute(
+		'data-state',
+		'on'
+	);
+
+	// The office-only day, linked to the newly-created office.
+	await page.goto('/fy27/day/2026-07-08');
+	await expect(page.getByRole('radio', { name: 'Office', exact: true })).toHaveAttribute(
+		'data-state',
+		'on'
+	);
+	await expect(page.getByRole('radio', { name: 'ImportedOfficeXYZ' })).toHaveAttribute(
 		'data-state',
 		'on'
 	);

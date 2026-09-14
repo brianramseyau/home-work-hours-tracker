@@ -60,6 +60,17 @@ describe('actions.upload', () => {
 		expect(result.data.error).toMatch(/Choose a .xlsx file/);
 	});
 
+	it('fails when the file is larger than the upload cap', async () => {
+		const { actions } = await import('./+page.server');
+		const big = fileFrom(Buffer.alloc(21 * 1024 * 1024));
+		const result = (await actions.upload(uploadEvent(big))) as {
+			status: number;
+			data: { error: string };
+		};
+		expect(result.status).toBe(400);
+		expect(result.data.error).toMatch(/too large/);
+	});
+
 	it('fails with the parser error message for an unreadable workbook', async () => {
 		const { actions } = await import('./+page.server');
 		const bad = fileFrom(Buffer.from('not a workbook'));
@@ -148,6 +159,36 @@ describe('actions.commit', () => {
 		)) as { status: number; data: { error: string } };
 		expect(result.status).toBe(400);
 		expect(result.data.error).toMatch(/valid rate/);
+	});
+
+	it('fails when the rate is negative', async () => {
+		const preview = await previewFor(db, [standardHomeRow('2026-07-01')]);
+		const { actions } = await import('./+page.server');
+		const result = (await actions.commit(
+			commitEvent({ preview: JSON.stringify(preview), rateDollars: '-1' })
+		)) as { status: number; data: { error: string } };
+		expect(result.status).toBe(400);
+		expect(result.data.error).toMatch(/valid rate/);
+	});
+
+	it('fails when the rate is absurdly large (a crafted POST)', async () => {
+		const preview = await previewFor(db, [standardHomeRow('2026-07-01')]);
+		const { actions } = await import('./+page.server');
+		const result = (await actions.commit(
+			commitEvent({ preview: JSON.stringify(preview), rateDollars: '1000000' })
+		)) as { status: number; data: { error: string } };
+		expect(result.status).toBe(400);
+		expect(result.data.error).toMatch(/valid rate/);
+	});
+
+	it('fails when the preview JSON parses but has the wrong shape', async () => {
+		const { actions } = await import('./+page.server');
+		const result = (await actions.commit(commitEvent({ preview: '{}', rateDollars: '0.70' }))) as {
+			status: number;
+			data: { error: string };
+		};
+		expect(result.status).toBe(400);
+		expect(result.data.error).toMatch(/upload the file again/);
 	});
 
 	it('fails when the preview field is entirely absent from the form', async () => {
@@ -250,6 +291,36 @@ describe('actions.commit', () => {
 		expect(getDay(db, '2026-07-01')?.officeId).toBe(cityOffice!.id);
 		expect(getDay(db, '2026-07-02')?.officeId).toBe(existingOffice.id);
 		expect(getDay(db, '2026-07-03')?.officeId).toBeNull();
+	});
+
+	it('fails when a proposed office is mapped to an office id that does not exist', async () => {
+		const preview = await previewFor(db, [{ date: '2026-07-01', notes: 'CityOffice' }]);
+		const { actions } = await import('./+page.server');
+		const result = (await actions.commit(
+			commitEvent({
+				preview: JSON.stringify(preview),
+				rateDollars: '0.70',
+				[`include-${preview.rows[0].rowNumber}`]: 'on',
+				'office-CityOffice': 'map:99999'
+			})
+		)) as { status: number; data: { error: string } };
+		expect(result.status).toBe(400);
+		expect(result.data.error).toMatch(/no longer exists/);
+	});
+
+	it('fails when a proposed office is mapped to a non-numeric id', async () => {
+		const preview = await previewFor(db, [{ date: '2026-07-01', notes: 'CityOffice' }]);
+		const { actions } = await import('./+page.server');
+		const result = (await actions.commit(
+			commitEvent({
+				preview: JSON.stringify(preview),
+				rateDollars: '0.70',
+				[`include-${preview.rows[0].rowNumber}`]: 'on',
+				'office-CityOffice': 'map:not-a-number'
+			})
+		)) as { status: number; data: { error: string } };
+		expect(result.status).toBe(400);
+		expect(result.data.error).toMatch(/no longer exists/);
 	});
 
 	it('excludes a row whose include checkbox is unchecked', async () => {

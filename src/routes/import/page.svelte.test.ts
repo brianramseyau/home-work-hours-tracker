@@ -157,10 +157,20 @@ describe('import page — review step', () => {
 			form: { form: 'upload', preview, existingRateCentsPerHour: null }
 		} as unknown as Parameters<typeof render<typeof Page>>[1]);
 
-		await expect.element(page.getByText('2026-07-01')).toBeInTheDocument();
+		await expect.element(page.getByText('2026-07-01')).toBeVisible();
+		const includeGoodRow = page.getByRole('checkbox', { name: 'Import 2026-07-01' });
+		await includeGoodRow.click();
+		await expect.element(includeGoodRow).not.toBeChecked();
+
 		await page.getByLabelText('Show issues only').click();
-		await expect.element(page.getByText('2026-07-01')).not.toBeInTheDocument();
-		await expect.element(page.getByText('2026-07-02')).toBeInTheDocument();
+		// Hidden via the `hidden` attribute, not removed from the DOM — its own checked state
+		// (unchecked, above) must survive the filter toggle so a manually-excluded row stays
+		// excluded, and a filtered-out row's checkbox is never silently missing from the form.
+		await expect.element(page.getByText('2026-07-01')).not.toBeVisible();
+		await expect.element(page.getByText('2026-07-02')).toBeVisible();
+
+		await page.getByLabelText('Show issues only').click();
+		await expect.element(includeGoodRow).not.toBeChecked();
 	});
 
 	it('toggles "Replace my manual edits"', async () => {
