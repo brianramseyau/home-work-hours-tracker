@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { loadLogoBuffer } from './logo';
 
 describe('loadLogoBuffer', () => {
@@ -10,5 +10,14 @@ describe('loadLogoBuffer', () => {
 		expect(buffer.subarray(0, 8)).toEqual(
 			Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
 		);
+	});
+
+	it('throws loudly rather than embedding corrupt bytes if the ?inline import is not a base64 data URI', async () => {
+		vi.resetModules();
+		vi.doMock('$lib/assets/logo-mark-light.png?inline', () => ({ default: 'not-a-data-uri' }));
+		const { loadLogoBuffer: loadWithBadAsset } = await import('./logo');
+		expect(() => loadWithBadAsset()).toThrow(/Expected a base64 data: URI/);
+		vi.doUnmock('$lib/assets/logo-mark-light.png?inline');
+		vi.resetModules();
 	});
 });

@@ -8,7 +8,7 @@ import type { Day, DisplayType } from '$lib/core/dayType';
 import { displayType, displayTypeLabel } from '$lib/core/dayType';
 import { datesInFy, monthLabel, monthsInFy, weekOfFy } from '$lib/core/fy';
 import { blockMinutes, toMinutes } from '$lib/core/time';
-import { claimCents, claimCentsByGroup, dayHomeMinutes, summarise } from '$lib/core/totals';
+import { claimCents, claimCentsByGroup, dayHomeMinutes } from '$lib/core/totals';
 import { APP_NAME, REPO_URL } from '$lib/branding';
 
 const INK = 'FF1D2640';
@@ -105,12 +105,23 @@ function countByDisplayType(days: Day[]): Record<DisplayType, number> {
  * Dates are every weekday in the FY, plus every weekend date that has a recorded day — a
  * weekend entry saved while "Include weekends" is off still counts toward the app's own totals
  * (`diaryLoad.ts` sums `listRange` unfiltered), so it must not silently disappear from the export.
+ *
+ * Also returns `totalMinutes` and `minutesByMonth`, summed in integer minutes from exactly the
+ * blocks these rows emit — not from a separate pass over `input.days` — so the Summary sheet's
+ * totals can never diverge from what the Diary sheet actually shows, structurally, even for a
+ * future caller whose `days` reaches outside this FY or carries a duplicate date.
  */
-function buildDiaryRows(input: BuildWorkbookInput): DiaryRow[] {
+function buildDiaryRows(input: BuildWorkbookInput): {
+	rows: DiaryRow[];
+	totalMinutes: number;
+	minutesByMonth: Map<string, number>;
+} {
 	const byDate = new Map(input.days.map((day) => [day.date, day]));
 	const officesById = new Map(input.offices.map((office) => [office.id, office.name]));
 	const holidayNameByDate = new Map(input.holidays.map((holiday) => [holiday.date, holiday.name]));
 	const rows: DiaryRow[] = [];
+	let totalMinutes = 0;
+	const minutesByMonth = new Map<string, number>();
 
 	const dates = datesInFy(input.fy.startYear, { includeWeekends: true }).filter(
 		(date) => input.settings.includeWeekends || !isWeekend(date) || byDate.has(date)
@@ -136,6 +147,10 @@ function buildDiaryRows(input: BuildWorkbookInput): DiaryRow[] {
 		// here either, or the export would count minutes the app itself does not.
 		if (day.kind === 'work' && day.blocks.length > 0) {
 			for (const block of day.blocks) {
+				const minutes = blockMinutes(block);
+				totalMinutes += minutes;
+				const month = date.slice(0, 7);
+				minutesByMonth.set(month, (minutesByMonth.get(month) ?? 0) + minutes);
 				rows.push({
 					date,
 					week: weekOfFy(date),
@@ -145,7 +160,7 @@ function buildDiaryRows(input: BuildWorkbookInput): DiaryRow[] {
 					end: block.end,
 					breakMinutes: block.breakMinutes,
 					notes,
-					hoursValue: blockMinutes(block) / 60
+					hoursValue: minutes / 60
 				});
 			}
 		} else {
@@ -163,7 +178,7 @@ function buildDiaryRows(input: BuildWorkbookInput): DiaryRow[] {
 		}
 	}
 
-	return rows;
+	return { rows, totalMinutes, minutesByMonth };
 }
 
 function addTitleBand(
@@ -283,11 +298,15 @@ function buildDiarySheet(
 		const hoursCell = excelRow.getCell('hours');
 		hoursCell.value = {
 			// Not rounded here — AGENTS.md's domain rule is to round once, at the end (the
-			// claim), not per row; `numFmt` below only formats the display to 2 dp.
+			// claim), not per row. numFmt below shows 4 dp, not the app's usual 2, specifically
+			// so the printed rows visibly sum to the printed total (see the totals cell below):
+			// at 2 dp, e.g. two 7.61666… h rows print as 7.62 + 7.62 = 15.24 while the true,
+			// unrounded total prints 15.23 — a real accountant-facing mismatch that a per-row
+			// ROUND would "fix" by reintroducing the claim-drift bug this column exists to avoid.
 			formula: `IF(F${rowNumber}="","",(G${rowNumber}-F${rowNumber})*24-H${rowNumber}/60)`,
 			result: diaryRow.hoursValue === '' ? undefined : diaryRow.hoursValue
 		};
-		hoursCell.numFmt = '0.00';
+		hoursCell.numFmt = '0.0000';
 
 		const tint = ROW_TINT[diaryRow.displayType];
 		if (tint) {
@@ -309,7 +328,7 @@ function buildDiarySheet(
 	totalsRow.getCell('type').font = { bold: true };
 	const totalsHoursCell = totalsRow.getCell('hours');
 	totalsHoursCell.value = { formula: `SUM(I2:I${lastDataRow})`, result: totalMinutes / 60 };
-	totalsHoursCell.numFmt = '0.00';
+	totalsHoursCell.numFmt = '0.0000';
 	totalsHoursCell.font = { bold: true };
 
 	addFooter(sheet, rowNumber + 2, 11, input.generatedAt);
@@ -469,19 +488,14 @@ export async function buildWorkbook(input: BuildWorkbookInput): Promise<Buffer> 
 	workbook.lastModifiedBy = APP_NAME;
 	workbook.created = new Date(`${input.generatedAt}T00:00:00Z`);
 
-	const rows = buildDiaryRows(input);
+	const { rows, totalMinutes, minutesByMonth } = buildDiaryRows(input);
 	const diaryLastRow = 1 + rows.length;
-
-	// The single source of truth for totals: the same `summarise` the in-app diary/year pages
-	// use (via `diaryLoad.ts`), so the export can never disagree with what the app itself shows.
-	const summary = summarise(input.days);
-	const minutesByMonth = new Map(summary.byMonth.map((entry) => [entry.month, entry.minutes]));
 
 	// Sheet order (Summary first) matters for how the workbook opens; the Summary's formulas
 	// only need the Diary's row count and totals, both computed above, so it can be added
 	// before the Diary sheet itself exists.
-	buildSummarySheet(workbook, input, diaryLastRow, summary.homeMinutes, minutesByMonth);
-	buildDiarySheet(workbook, input, rows, summary.homeMinutes);
+	buildSummarySheet(workbook, input, diaryLastRow, totalMinutes, minutesByMonth);
+	buildDiarySheet(workbook, input, rows, totalMinutes);
 
 	const arrayBuffer = await workbook.xlsx.writeBuffer();
 	return Buffer.from(arrayBuffer);

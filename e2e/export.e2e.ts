@@ -52,15 +52,25 @@ test('export: download the FY27 spreadsheet and cross-check its totals against t
 }) => {
 	await ensureSetUp(page);
 
+	// A known, manually-saved Home day (the standard 7.6 h block), independent of what the
+	// schedule happens to auto-prefill and of any other spec's data — auto-prefill alone isn't a
+	// reliable source of "at least one home hour" here, since a schedule created by ensureSetUp
+	// only plans forward from its effective-from date, and 2026-09-14 (settings.e2e.ts) may add a
+	// custom holiday that turns an auto-filled day into a public holiday instead. 2026-09-21 is a
+	// Monday inside FY27 that no other spec touches.
+	await page.goto('/fy27/day/2026-09-21');
+	await page.getByRole('radio', { name: 'Home' }).click();
+	await submitAndWait(page, '?/saveDay', page.getByRole('button', { name: 'Save day' }));
+	await expect(page.getByRole('alert')).not.toBeVisible();
+
 	// Visiting /fy27/export triggers the same auto-prefill as any other page (the root layout's
 	// load runs ensurePrefilled on every navigation), so there's no need to warm the diary up on
 	// a separate page first.
 	await page.goto('/fy27/export');
 	const homeHoursText = await page.getByText(/h at home$/).textContent();
 	const displayedHours = Number(homeHoursText!.replace(/[^\d.]/g, ''));
-	// A schedule was just created (or already existed) with Mon–Fri home days, and "today" is
-	// pinned well into FY27, so there should be real accumulated hours by now — otherwise the
-	// cross-check below (0 vs 0) would pass without actually exercising the export's totals.
+	// The manually-saved day above guarantees at least 7.6 h, regardless of run order or what
+	// other specs have (or haven't) done — so the cross-check below can't pass at 0 vs 0.
 	expect(displayedHours).toBeGreaterThan(0);
 
 	const [download] = await Promise.all([

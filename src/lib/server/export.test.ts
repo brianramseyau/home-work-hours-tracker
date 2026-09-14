@@ -454,9 +454,14 @@ describe('buildWorkbook', () => {
 				source: 'manual',
 				blocks: [homeBlock]
 			},
-			// A real home day too, so the total is non-zero — otherwise exceljs's own formula-cell
-			// serialization drops a cached `result: 0` (`FormulaValue._copyModel`'s `if (value)`
-			// check treats 0 as absent), which would make this assertion pass for the wrong reason.
+			// A real home day too, so the assertion below is actually discriminating: a buggy
+			// implementation that (wrongly) counts the leave day's block would sum to 15.2
+			// hours, not the correct 7.6 — without this second day, that same bug would instead
+			// produce exactly 7.6 (from the leave day's block alone) and the test would pass for
+			// the wrong reason. It also sidesteps exceljs's own formula-cell serialization
+			// dropping a cached `result: 0` (`FormulaValue._copyModel`'s `if (value)` check
+			// treats 0 as absent) — a correct 0-hours result would otherwise round-trip as
+			// `undefined`, which this test isn't trying to exercise.
 			{
 				date: '2026-07-02',
 				kind: 'work',

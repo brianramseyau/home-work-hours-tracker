@@ -9,7 +9,17 @@
 // which all happen to run from the repo root.
 import logoDataUri from '$lib/assets/logo-mark-light.png?inline';
 
+const DATA_URI_PREFIX = 'data:';
+
 export function loadLogoBuffer(): Buffer {
-	const base64 = logoDataUri.slice(logoDataUri.indexOf(',') + 1);
-	return Buffer.from(base64, 'base64');
+	// Guarded rather than assumed: if a future Vite version ever resolves `?inline` to something
+	// other than a base64 data: URI (e.g. a plain URL, or a differently-encoded data URI), this
+	// throws loudly instead of quietly embedding corrupt bytes in every generated workbook.
+	const commaIndex = logoDataUri.indexOf(',');
+	if (!logoDataUri.startsWith(DATA_URI_PREFIX) || commaIndex === -1) {
+		throw new Error(
+			`Expected a base64 data: URI for the logo asset, got "${logoDataUri.slice(0, 40)}…"`
+		);
+	}
+	return Buffer.from(logoDataUri.slice(commaIndex + 1), 'base64');
 }
