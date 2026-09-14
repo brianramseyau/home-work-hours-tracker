@@ -59,6 +59,6 @@
 			Bring in years you already tracked in a spreadsheet. You'll review everything before it's
 			saved.
 		</p>
-		<Button variant="outline" disabled class="mt-3">Import a spreadsheet</Button>
+		<Button variant="outline" href="/import" class="mt-3">Import a spreadsheet</Button>
 	</div>
 </div>

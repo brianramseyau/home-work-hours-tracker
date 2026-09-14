@@ -25,6 +25,25 @@
 			toast.success(`Filled ${data.filled} day${data.filled === 1 ? '' : 's'} from your schedule`);
 		}
 	});
+
+	// A one-off toast after a legacy import redirects here — the count comes through the URL
+	// rather than page data, since the import lands on a different route. The param is stripped
+	// right away so refreshing (or navigating back) never re-shows it.
+	$effect(() => {
+		const imported = page.url.searchParams.get('imported');
+		if (imported === null) return;
+		const count = Number(imported);
+		if (count > 0) {
+			toast.success(`Imported ${count} day${count === 1 ? '' : 's'}`);
+		}
+		// Plain history.replaceState, not SvelteKit's own: this only tidies the address bar after
+		// the toast has been read, and isn't a real navigation the router needs to know about. A
+		// relative path+search (not a full URL) avoids the browser's same-origin check on the URL
+		// argument.
+		const url = new URL(page.url);
+		url.searchParams.delete('imported');
+		history.replaceState(history.state, '', url.pathname + url.search);
+	});
 </script>
 
 <svelte:head>
