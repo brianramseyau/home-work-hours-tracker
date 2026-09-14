@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { ensurePrefilled, raiseWatermark, replanFrom } from './autoPrefill';
+import { ensurePrefilled, raiseWatermark, replanFrom, resetDayToSchedule } from './autoPrefill';
 import { createDb, type Db } from './db/create';
 import { getDay, listRange, upsertDay } from './repo/days';
 import { createOffice } from './repo/offices';
@@ -175,6 +175,45 @@ describe('replanFrom', () => {
 
 		replanFrom(db, '2026-07-01');
 		expect(getDay(db, manualDate)).toMatchObject({ kind: 'leave', source: 'manual' });
+	});
+});
+
+describe('resetDayToSchedule', () => {
+	it('discards a manual override and re-derives the day from the schedule', () => {
+		homeWeekdaySchedule('2026-07-01', '2026-06-29');
+		ensurePrefilled(db, '2026-07-08');
+
+		upsertDay(
+			db,
+			{
+				date: '2026-07-06',
+				kind: 'leave',
+				officeId: null,
+				notes: 'Rostered day off',
+				source: 'manual',
+				blocks: []
+			},
+			'2026-07-06T00:00:00.000Z'
+		);
+
+		const result = resetDayToSchedule(db, '2026-07-06');
+		expect(result).toMatchObject({ kind: 'work', source: 'prefill' });
+		expect(getDay(db, '2026-07-06')).toMatchObject({ kind: 'work', source: 'prefill' });
+	});
+
+	it('returns null when the schedule says the day should be off', () => {
+		homeWeekdaySchedule('2026-07-01', '2026-06-29'); // weekdays only — Saturday has no entry
+		const result = resetDayToSchedule(db, '2026-07-04'); // a Saturday
+		expect(result).toBeNull();
+		expect(getDay(db, '2026-07-04')).toBeNull();
+	});
+
+	it('honours a public holiday over the schedule', () => {
+		homeWeekdaySchedule('2026-07-01', '2026-06-29');
+		replaceBundledHolidays(db, 'AU-VIC', 2026, [{ date: '2026-11-03', name: 'Melbourne Cup' }]);
+
+		const result = resetDayToSchedule(db, '2026-11-03');
+		expect(result).toMatchObject({ kind: 'public_holiday' });
 	});
 });
 

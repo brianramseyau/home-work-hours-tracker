@@ -7,6 +7,8 @@ import {
 	fySlug,
 	fyStartYear,
 	fySummary,
+	monthLabel,
+	monthsInFy,
 	parseFyLabel,
 	parseFySlug,
 	weekOfFy
@@ -95,5 +97,31 @@ describe('datesInFy', () => {
 		const dates = datesInFy(2026, { includeWeekends: true });
 		expect(dates).toContain('2026-07-04');
 		expect(dates).toContain('2026-07-05');
+	});
+});
+
+describe('monthsInFy', () => {
+	it('lists the 12 months from July to June, spanning the calendar-year boundary', () => {
+		expect(monthsInFy(2026)).toEqual([
+			'2026-07',
+			'2026-08',
+			'2026-09',
+			'2026-10',
+			'2026-11',
+			'2026-12',
+			'2027-01',
+			'2027-02',
+			'2027-03',
+			'2027-04',
+			'2027-05',
+			'2027-06'
+		]);
+	});
+});
+
+describe('monthLabel', () => {
+	it('formats a "YYYY-MM" month as a short name and year', () => {
+		expect(monthLabel('2026-07')).toBe('Jul 2026');
+		expect(monthLabel('2027-01')).toBe('Jan 2027');
 	});
 });

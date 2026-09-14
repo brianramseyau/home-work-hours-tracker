@@ -10,8 +10,11 @@ for (const colorScheme of ['light', 'dark'] as const) {
 
 		test('home page shows the app shell with no accessibility violations', async ({ page }) => {
 			await page.goto('/');
+			// Once FY27 exists (another spec in this shared-database suite may have created it
+			// already), `/` redirects straight to its diary; before that, it's the welcome page
+			// inviting you to set one up. Either way the same app shell wraps it.
 			await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-				'Your hours at home, kept for tax time'
+				/Your hours at home, kept for tax time|FY27 diary/
 			);
 
 			const nav = page.getByRole('navigation', { name: 'Primary' });

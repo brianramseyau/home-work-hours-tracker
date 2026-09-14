@@ -3,13 +3,13 @@
 // decision of *what* a date should be lives entirely in `core/prefill.ts`.
 
 import { addDays } from '$lib/core/date';
-import type { HomeBlock } from '$lib/core/dayType';
+import type { Day, HomeBlock } from '$lib/core/dayType';
 import { fyBounds, fyStartYear } from '$lib/core/fy';
 import { planPrefill } from '$lib/core/prefill';
 import type { Schedule } from '$lib/core/schedule';
 import type { Db } from './db/create';
 import { effectiveHolidays } from './holidays';
-import { deleteDay, listRange, upsertDay } from './repo/days';
+import { deleteDay, getDay, listRange, upsertDay } from './repo/days';
 import { listHolidays } from './repo/holidays';
 import { listSchedules } from './repo/schedules';
 import { getSettings, setPrefilledThrough } from './repo/settings';
@@ -62,6 +62,26 @@ export function replanFrom(db: Db, fromDate: string): EnsurePrefilledResult {
 	});
 
 	return { filled };
+}
+
+/**
+ * Discards a manual override at `date` and re-derives it from the schedule, holidays and
+ * standard hours in effect for it — the day editor's "Reset to schedule". Deletes first so
+ * `planPrefill` (which never touches a non-`prefill` row) treats the date as if it had no row
+ * at all, then plans just that one date. Returns the resulting day, or `null` for an "off" day.
+ */
+export function resetDayToSchedule(db: Db, date: string): Day | null {
+	deleteDay(db, date);
+	const settings = getSettings(db);
+	applyPlan(db, {
+		from: date,
+		to: date,
+		schedules: listSchedules(db),
+		holidayRegion: settings.holidayRegion,
+		standard: standardBlockOf(settings),
+		includeWeekends: settings.includeWeekends
+	});
+	return getDay(db, date);
 }
 
 /** Raises the watermark without planning anything, so an import never back-fills its own gaps. */

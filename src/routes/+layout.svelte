@@ -2,6 +2,7 @@
 	import './layout.css';
 	import { page } from '$app/state';
 	import { ModeWatcher } from 'mode-watcher';
+	import { toast } from 'svelte-sonner';
 	import AppFooter from '$lib/components/app/AppFooter.svelte';
 	import FySwitcher from '$lib/components/app/FySwitcher.svelte';
 	import Logo from '$lib/components/app/Logo.svelte';
@@ -15,6 +16,15 @@
 	let { data, children }: LayoutProps = $props();
 
 	const items = $derived(navItems(data.currentFy.slug));
+
+	// A single quiet toast when auto-prefill materialises new days — no banner, no prompt. Most
+	// navigations find nothing to fill (the watermark already reached today), so this stays
+	// silent almost all the time; it only speaks up the first time the app is opened on a new day.
+	$effect(() => {
+		if (data.filled > 0) {
+			toast.success(`Filled ${data.filled} day${data.filled === 1 ? '' : 's'} from your schedule`);
+		}
+	});
 </script>
 
 <svelte:head>

@@ -41,6 +41,39 @@ export function weekday(iso: string): number {
 	return jsDay === 0 ? 7 : jsDay;
 }
 
+const WEEKDAY_NAMES = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const MONTH_NAMES = [
+	'Jan',
+	'Feb',
+	'Mar',
+	'Apr',
+	'May',
+	'Jun',
+	'Jul',
+	'Aug',
+	'Sep',
+	'Oct',
+	'Nov',
+	'Dec'
+];
+
+/** "Wed 16 Sep 2026" for "2026-09-16" — the day editor's heading, in place of the raw ISO date. */
+export function formatFullDate(iso: string): string {
+	const [year, month, day] = iso.split('-');
+	return `${WEEKDAY_NAMES[weekday(iso)]} ${Number(day)} ${MONTH_NAMES[Number(month) - 1]} ${year}`;
+}
+
+/** "Mon 14 Sep" for "2026-09-14" — a diary row's date label, without the year. */
+export function formatShortDate(iso: string): string {
+	const [, month, day] = iso.split('-');
+	return `${WEEKDAY_NAMES[weekday(iso)]} ${Number(day)} ${MONTH_NAMES[Number(month) - 1]}`;
+}
+
+/** "Mon" for "2026-09-14" — a diary row's weekday label, without the date. */
+export function weekdayShort(iso: string): string {
+	return WEEKDAY_NAMES[weekday(iso)];
+}
+
 /** The Monday of the week containing `iso`. */
 export function mondayOf(iso: string): string {
 	return addDays(iso, -(weekday(iso) - 1));

@@ -26,7 +26,7 @@ describe('years page', () => {
 						rateCentsPerHour: 70,
 						rateNote: null,
 						finalisedAt: null,
-						fy: { label: 'FY27', range: 'Jul 2026 – Jun 2027' },
+						fy: { label: 'FY27', slug: 'fy27', range: 'Jul 2026 – Jun 2027' },
 						homeMinutes: 456,
 						claimCents: 532
 					}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { displayType } from './dayType';
+import { displayType, displayTypeLabel } from './dayType';
 
 const base = { kind: 'work' as const, officeId: null as number | null, blocks: [] as never[] };
 
@@ -33,5 +33,15 @@ describe('displayType', () => {
 		expect(displayType({ ...base, kind: 'sick' })).toBe('sick');
 		expect(displayType({ ...base, kind: 'public_holiday' })).toBe('public_holiday');
 		expect(displayType({ ...base, kind: 'off' })).toBe('off');
+	});
+});
+
+describe('displayTypeLabel', () => {
+	it('has a label for every display type', () => {
+		const types = ['home', 'office', 'split', 'leave', 'sick', 'public_holiday', 'off'] as const;
+		for (const type of types) {
+			expect(displayTypeLabel(type)).toBeTruthy();
+		}
+		expect(displayTypeLabel('public_holiday')).toBe('Public holiday');
 	});
 });

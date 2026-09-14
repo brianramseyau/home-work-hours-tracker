@@ -3,12 +3,15 @@ import {
 	addDays,
 	daysBetween,
 	eachDate,
+	formatFullDate,
 	formatIsoDate,
+	formatShortDate,
 	isBetween,
 	isWeekend,
 	mondayOf,
 	parseIsoDate,
-	weekday
+	weekday,
+	weekdayShort
 } from './date';
 
 describe('parseIsoDate', () => {
@@ -116,5 +119,25 @@ describe('isBetween', () => {
 		expect(isBetween('2026-07-31', '2026-07-01', '2026-07-31')).toBe(true);
 		expect(isBetween('2026-06-30', '2026-07-01', '2026-07-31')).toBe(false);
 		expect(isBetween('2026-08-01', '2026-07-01', '2026-07-31')).toBe(false);
+	});
+});
+
+describe('formatFullDate', () => {
+	it('formats an ISO date as weekday, day, short month and year', () => {
+		expect(formatFullDate('2026-09-16')).toBe('Wed 16 Sep 2026');
+		expect(formatFullDate('2027-01-01')).toBe('Fri 1 Jan 2027');
+	});
+});
+
+describe('formatShortDate', () => {
+	it('formats an ISO date as weekday, day and short month, without the year', () => {
+		expect(formatShortDate('2026-09-14')).toBe('Mon 14 Sep');
+	});
+});
+
+describe('weekdayShort', () => {
+	it('formats an ISO date as just its short weekday name', () => {
+		expect(weekdayShort('2026-09-14')).toBe('Mon');
+		expect(weekdayShort('2026-09-20')).toBe('Sun');
 	});
 });
