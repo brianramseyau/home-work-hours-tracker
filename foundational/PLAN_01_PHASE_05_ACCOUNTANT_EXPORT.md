@@ -72,6 +72,13 @@
 
 ## Acceptance criteria
 
-- [ ] 100% coverage. `verify` is green.
-- [ ] Opened manually in Excel and in Numbers or LibreOffice: the formulas recalculate, the link is clickable, the logo renders, and the print preview fits.
-- [ ] Screenshot of the export page at both viewports and in both themes.
+- [x] 100% coverage. `verify` is green.
+- [ ] Opened manually in Excel and in Numbers or LibreOffice: the formulas recalculate, the link is clickable, the logo renders, and the print preview fits. (Not run by the agent — no Excel/Numbers/LibreOffice available in this environment. The generated workbook was re-parsed with exceljs and spot-checked instead: sheet order, formulas, cached results, the hyperlink, the embedded image and the data-bar rule all round-trip correctly. The owner should still open a real download once in a spreadsheet app before relying on it.)
+- [x] Screenshot of the export page at both viewports and in both themes.
+
+## Notes and deviations
+
+- **Download route is `/[fy]/export/download`, not `/[fy]/export.xlsx`.** A literal `export.xlsx` path segment matches the repo-wide `*.xlsx` rule in `.gitignore` (AGENTS.md §1's guard against ever committing a real spreadsheet), so `git` silently ignored the route file under that name. The served filename is unaffected — `Content-Disposition` still names the download `FY27-home-work-diary.xlsx`; only the URL path changed.
+- **Logo image is the existing `static/brand/logo-mark-light.png` mark**, not a `logo-lockup.png`. Phase 01 never produced a lockup asset (only `logo-mark.svg`, `favicon-glyph.svg` and `lamp-off.svg` exist under `src/lib/assets/`, plus the one PNG under `static/brand/`), so the title band uses the mark alone rather than blocking this phase on new asset creation. The workbook title and subtitle text next to it already carry the wordmark's job.
+- **Monthly `SUMIFS` formulas match against a hidden helper column D** (the "YYYY-MM" key) on the Summary sheet, since the visible month label ("Jul 2026") doesn't equal the Diary's own hidden Month column value and SUMIFS needs an exact match.
+- Every formula cell also carries a **pre-computed cached result** (not left for the spreadsheet app to calculate on first open), computed directly from the same `days` data the formulas reference, so the workbook shows correct figures immediately and the unit/E2E tests can assert on real numbers without a spreadsheet engine.

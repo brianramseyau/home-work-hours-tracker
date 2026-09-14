@@ -136,7 +136,9 @@ Totals, week numbers and display types are derived, never stored. A new FY copie
 /[fy]                     Diary (mobile week pager / desktop full-year table) + summary
 /[fy]/day/[date]          Day editor deep link (normally a Drawer/Sheet via shallow routing)
 /[fy]/year                Punch-card year overview + breakdowns
-/[fy]/export              Export page;  GET /[fy]/export.xlsx streams the workbook
+/[fy]/export              Export page;  GET /[fy]/export/download streams the workbook
+                          (not /[fy]/export.xlsx — that path collides with the repo's own
+                          *.xlsx gitignore rule; see PLAN_01_PHASE_05's Notes and deviations)
 /years                    Financial years: create, rate, finalise
 /settings                 General · Offices · Schedule · Holidays · Historical import (→ /import)
 /import                   Upload legacy xlsx → review → commit
