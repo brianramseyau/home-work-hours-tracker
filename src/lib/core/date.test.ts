@@ -144,6 +144,23 @@ describe('formatDateRange', () => {
 	it('names both months when the range crosses a month boundary', () => {
 		expect(formatDateRange('2026-09-29', '2026-10-05')).toBe('29 Sep–5 Oct');
 	});
+
+	it('names both years when the range crosses a year boundary', () => {
+		expect(formatDateRange('2026-12-28', '2027-01-03')).toBe('28 Dec 2026–3 Jan 2027');
+	});
+
+	it('collapses to a single date when from and to are the same day', () => {
+		expect(formatDateRange('2026-07-01', '2026-07-01')).toBe('1 Jul');
+	});
+
+	it('rejects an invalid date on either end', () => {
+		expect(() => formatDateRange('2026-13-01', '2026-09-05')).toThrow(
+			'is not a valid calendar date'
+		);
+		expect(() => formatDateRange('2026-09-01', '2026-13-05')).toThrow(
+			'is not a valid calendar date'
+		);
+	});
 });
 
 describe('weekdayShort', () => {
