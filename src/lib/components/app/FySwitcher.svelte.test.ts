@@ -33,21 +33,27 @@ describe('FySwitcher', () => {
 		await expect.element(page.getByRole('link', { name: /FY26/ })).toHaveAttribute('href', '/fy26');
 	});
 
-	it('marks the year the URL is on as current, and only that year', async () => {
-		render(FySwitcher, { fy, years, currentStartYear: 2026 });
+	it('marks the year the URL is on as current, not the badge’s year', async () => {
+		// The marker must come from `currentStartYear`, not the displayed `fy` — so deliberately
+		// pick a URL year that differs from the badge (FY26 in the URL, FY27 on the badge).
+		render(FySwitcher, { fy, years, currentStartYear: 2025 });
 		await page.getByRole('button', { name: /FY27/ }).click();
 		await expect
-			.element(page.getByRole('link', { name: /FY27/ }))
+			.element(page.getByRole('link', { name: /FY26/ }))
 			.toHaveAttribute('aria-current', 'page');
 		await expect
-			.element(page.getByRole('link', { name: /FY26/ }))
+			.element(page.getByRole('link', { name: /FY27/ }))
 			.not.toHaveAttribute('aria-current');
 	});
 
 	it('marks nothing current when no year is in the URL (e.g. the Years page)', async () => {
 		render(FySwitcher, { fy, years, currentStartYear: null });
 		await page.getByRole('button', { name: /FY27/ }).click();
-		expect(document.querySelectorAll('[aria-current="page"]').length).toBe(0);
+		// Await the pop-out list before asserting, so this can't pass vacuously on an unrendered
+		// pop-out; scope the negative check to the pop-out itself.
+		await expect.element(page.getByRole('link', { name: /FY27/ })).toBeInTheDocument();
+		const dialog = document.querySelector('[role="dialog"]') as HTMLElement;
+		expect(dialog.querySelectorAll('[aria-current="page"]').length).toBe(0);
 	});
 
 	it('links the cog to the years CRUD page', async () => {
