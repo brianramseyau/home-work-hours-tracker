@@ -4,7 +4,7 @@
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import { Button } from '$lib/components/ui/button';
 	import DayRow from './DayRow.svelte';
-	import { diaryOfficeName, type DiaryDay } from '$lib/core/diary';
+	import { diaryOfficeName, type DiaryDay, type DiaryOffice } from '$lib/core/diary';
 
 	let {
 		weeks,
@@ -15,7 +15,7 @@
 		weeks: DiaryDay[][];
 		currentWeek: number;
 		onOpenDay: (date: string) => void;
-		offices?: { id: number; name: string }[];
+		offices?: DiaryOffice[];
 	} = $props();
 
 	// weeks is never empty: every financial year has at least one week, and each bucket

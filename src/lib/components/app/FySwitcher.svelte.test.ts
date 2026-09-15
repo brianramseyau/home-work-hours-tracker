@@ -33,12 +33,21 @@ describe('FySwitcher', () => {
 		await expect.element(page.getByRole('link', { name: /FY26/ })).toHaveAttribute('href', '/fy26');
 	});
 
-	it('marks the year being viewed as the current one', async () => {
-		render(FySwitcher, { fy, years });
+	it('marks the year the URL is on as current, and only that year', async () => {
+		render(FySwitcher, { fy, years, currentStartYear: 2026 });
 		await page.getByRole('button', { name: /FY27/ }).click();
 		await expect
 			.element(page.getByRole('link', { name: /FY27/ }))
 			.toHaveAttribute('aria-current', 'page');
+		await expect
+			.element(page.getByRole('link', { name: /FY26/ }))
+			.not.toHaveAttribute('aria-current');
+	});
+
+	it('marks nothing current when no year is in the URL (e.g. the Years page)', async () => {
+		render(FySwitcher, { fy, years, currentStartYear: null });
+		await page.getByRole('button', { name: /FY27/ }).click();
+		expect(document.querySelectorAll('[aria-current="page"]').length).toBe(0);
 	});
 
 	it('links the cog to the years CRUD page', async () => {

@@ -59,6 +59,12 @@ export function isUpcoming(day: DiaryDay): boolean {
 	return day.status === 'ghost' || day.status === 'future';
 }
 
+/** The slice of an office the diary needs: just enough to resolve a day's office name. */
+export interface DiaryOffice {
+	id: number;
+	name: string;
+}
+
 /**
  * The name of the office a day was worked at, or null if it has none (or the office no longer
  * exists). Archived offices are included in `offices`, so a day recorded before its office was
@@ -66,7 +72,7 @@ export function isUpcoming(day: DiaryDay): boolean {
  */
 export function diaryOfficeName(
 	day: Pick<DiaryDay, 'officeId'>,
-	offices: { id: number; name: string }[]
+	offices: DiaryOffice[]
 ): string | null {
 	if (day.officeId === null) return null;
 	return offices.find((office) => office.id === day.officeId)?.name ?? null;

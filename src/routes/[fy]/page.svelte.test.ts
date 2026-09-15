@@ -91,7 +91,11 @@ describe('Diary page', () => {
 		render(Page, {
 			data: baseData({ days })
 		} as unknown as Parameters<typeof render<typeof Page>>[1]);
-		await expect.element(page.getByText('Office Location 1').first()).toBeInTheDocument();
+
+		// Scoped to the table row by id, so this proves the desktop DiaryTable column rather
+		// than the mobile WeekPager row (both are in the DOM regardless of viewport width).
+		const row = document.getElementById('day-row-2026-09-14') as HTMLElement;
+		expect(row.textContent).toContain('Office Location 1');
 	});
 
 	it('shows a finalised banner linking to Years', async () => {

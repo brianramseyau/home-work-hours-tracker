@@ -6,7 +6,13 @@
 	import { Button } from '$lib/components/ui/button';
 	import TypeSwatch from './TypeSwatch.svelte';
 	import { weekdayShort } from '$lib/core/date';
-	import { diaryDayLabel, diaryOfficeName, isUpcoming, type DiaryDay } from '$lib/core/diary';
+	import {
+		diaryDayLabel,
+		diaryOfficeName,
+		isUpcoming,
+		type DiaryDay,
+		type DiaryOffice
+	} from '$lib/core/diary';
 	import { formatHours } from '$lib/core/time';
 
 	let {
@@ -17,7 +23,7 @@
 	}: {
 		weeks: DiaryDay[][];
 		onOpenDay: (date: string) => void;
-		offices?: { id: number; name: string }[];
+		offices?: DiaryOffice[];
 		finalised?: boolean;
 	} = $props();
 
