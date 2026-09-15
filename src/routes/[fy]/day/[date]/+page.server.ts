@@ -3,6 +3,7 @@
 
 import { error } from '@sveltejs/kit';
 import { displayType } from '$lib/core/dayType';
+import { scheduledDay } from '$lib/core/diary';
 import { ISO_DATE } from '$lib/core/validation';
 import { clearDay, resetDay, saveDay } from '$lib/server/dayActions';
 import { db } from '$lib/server/db';
@@ -14,12 +15,28 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 
 	// The shared actions already reject a date outside this FY (`dayGuardFailure`); checking it
 	// here too keeps the 404 consistent instead of rendering a deep link that can never save.
-	const { fyBounds } = await parent();
+	const { fyBounds, today, year, schedules, holidays, settings } = await parent();
 	if (params.date < fyBounds.start || params.date > fyBounds.end) {
 		error(404, 'Not a date in this financial year');
 	}
 
-	const row = getDay(db, params.date);
+	// A day after today isn't stored until it's reached, so without a row it opens on what the
+	// schedule will make it — the same preview the Diary shows — rather than an empty "Off" day.
+	// Not in a finalised year, which nothing is ever planned into again.
+	const row =
+		getDay(db, params.date) ??
+		(params.date > today && !year?.finalisedAt
+			? scheduledDay(params.date, {
+					schedules,
+					holidays,
+					standard: {
+						start: settings.standardStart,
+						end: settings.standardEnd,
+						breakMinutes: settings.standardBreakMinutes
+					},
+					includeWeekends: settings.includeWeekends
+				})
+			: null);
 	const day = {
 		date: params.date,
 		officeId: row?.officeId ?? null,

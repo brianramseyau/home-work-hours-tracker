@@ -51,6 +51,36 @@ describe('PunchCard', () => {
 		await expect.element(page.getByRole('button', { name: '2026-09-07, Off' })).toBeInTheDocument();
 	});
 
+	it('describes a future day with nothing scheduled as not yet', async () => {
+		render(PunchCard, { weeks: weeks() });
+		await expect
+			.element(page.getByRole('button', { name: '2026-09-15, Not yet' }))
+			.toBeInTheDocument();
+	});
+
+	it('describes a schedule preview without claiming its hours', async () => {
+		const days = buildDiaryDays({
+			startYear: 2026,
+			today: '2026-09-14',
+			days: [],
+			schedules: [
+				{
+					effectiveFrom: '2026-07-01',
+					cycleWeeks: 1,
+					anchorMonday: '2026-06-29',
+					days: [{ weekIndex: 0, weekday: 2, mode: 'home', officeId: null }]
+				}
+			],
+			holidays: [],
+			standard: STANDARD,
+			includeWeekends: false
+		});
+		render(PunchCard, { weeks: groupDiaryDaysByWeek(days) });
+		await expect
+			.element(page.getByRole('button', { name: '2026-09-15, Home from schedule' }))
+			.toBeInTheDocument();
+	});
+
 	it('calls onSelectDay with the clicked date', async () => {
 		let selected: string | null = null;
 		render(PunchCard, { weeks: weeks(), onSelectDay: (date) => (selected = date) });

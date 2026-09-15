@@ -39,6 +39,20 @@ describe('DayRow', () => {
 		expect(page.getByText(/h$/).elements().length).toBe(0);
 	});
 
+	it('reads "Not yet", not "Off", for a future day with nothing scheduled', async () => {
+		render(DayRow, {
+			day: { ...baseDay, status: 'future', source: null, displayType: 'off', kind: 'off' },
+			onOpen: () => {}
+		});
+		await expect.element(page.getByText('Not yet')).toBeInTheDocument();
+		expect(page.getByText('Off', { exact: true }).elements().length).toBe(0);
+	});
+
+	it('mutes a schedule preview so it does not read as recorded', async () => {
+		render(DayRow, { day: { ...baseDay, source: null, status: 'ghost' }, onOpen: () => {} });
+		await expect.element(page.getByRole('button')).toHaveClass('text-muted-foreground');
+	});
+
 	it('marks a prefill-sourced day as from the schedule', async () => {
 		render(DayRow, { day: { ...baseDay, source: 'prefill' }, onOpen: () => {} });
 		await expect.element(page.getByText('From schedule')).toBeInTheDocument();

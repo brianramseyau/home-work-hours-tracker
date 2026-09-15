@@ -6,8 +6,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import TypeSwatch from './TypeSwatch.svelte';
 	import { weekdayShort } from '$lib/core/date';
-	import { displayTypeLabel } from '$lib/core/dayType';
-	import type { DiaryDay } from '$lib/core/diary';
+	import { diaryDayLabel, isUpcoming, type DiaryDay } from '$lib/core/diary';
 	import { formatHours } from '$lib/core/time';
 
 	let {
@@ -127,10 +126,10 @@
 					id={`day-row-${day.date}`}
 					tabindex="0"
 					onfocus={() => (focusedDate = day.date)}
-					class="border-b outline-none focus-visible:bg-accent"
+					class={`border-b outline-none focus-visible:bg-accent ${day.status === 'ghost' ? 'text-muted-foreground' : ''}`}
 				>
 					<td class="py-1.5 pr-2">
-						<TypeSwatch type={day.displayType} future={day.status === 'future'} class="size-3.5" />
+						<TypeSwatch type={day.displayType} future={isUpcoming(day)} class="size-3.5" />
 					</td>
 					<td class="py-1.5 pr-2">
 						<button
@@ -143,7 +142,7 @@
 					</td>
 					<td class="py-1.5 pr-2 font-medium">
 						<button type="button" class="hover:underline" onclick={() => onOpenDay(day.date)}>
-							{displayTypeLabel(day.displayType)}
+							{diaryDayLabel(day)}
 						</button>
 					</td>
 					<td class="py-1.5 pr-2">
