@@ -3,6 +3,7 @@ import { fyStartYear, fySummary } from '$lib/core/fy';
 import { ensurePrefilled } from '$lib/server/autoPrefill';
 import { today } from '$lib/server/clock';
 import { db } from '$lib/server/db';
+import { listYears } from '$lib/server/repo/years';
 import type { LayoutServerLoad } from './$types';
 
 // "Today" is decided on the server (process TZ) and handed to the client, so the two can
@@ -13,5 +14,10 @@ export const load: LayoutServerLoad = ({ url }) => {
 	void url.pathname;
 	const date = today(env);
 	const { filled } = ensurePrefilled(db, date);
-	return { today: date, currentFy: fySummary(fyStartYear(date)), filled };
+	// Every year the switcher offers, newest first — the most recently added year is the one
+	// most likely to be the one being worked on.
+	const years = listYears(db)
+		.map((year) => fySummary(year.startYear))
+		.reverse();
+	return { today: date, currentFy: fySummary(fyStartYear(date)), years, filled };
 };

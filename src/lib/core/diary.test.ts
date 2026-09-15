@@ -3,6 +3,7 @@ import {
 	buildDiaryDays,
 	countsByDisplayType,
 	diaryDayLabel,
+	diaryOfficeName,
 	groupDiaryDaysByWeek,
 	isUpcoming,
 	scheduledDay
@@ -278,6 +279,25 @@ describe('diaryDayLabel and isUpcoming', () => {
 		expect(isUpcoming(unscheduled)).toBe(true);
 		expect(isUpcoming(preview)).toBe(true);
 		expect(isUpcoming({ ...preview, status: 'recorded' })).toBe(false);
+	});
+});
+
+describe('diaryOfficeName', () => {
+	const offices = [
+		{ id: 1, name: 'Office Location 1' },
+		{ id: 2, name: 'Office Location 2' }
+	];
+
+	it('is null for a day with no office', () => {
+		expect(diaryOfficeName({ officeId: null }, offices)).toBeNull();
+	});
+
+	it('resolves the office a day was worked at', () => {
+		expect(diaryOfficeName({ officeId: 2 }, offices)).toBe('Office Location 2');
+	});
+
+	it('is null when the office is not in the list (e.g. a stale id)', () => {
+		expect(diaryOfficeName({ officeId: 99 }, offices)).toBeNull();
 	});
 });
 

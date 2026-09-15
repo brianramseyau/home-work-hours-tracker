@@ -57,6 +57,20 @@ describe('DiaryTable', () => {
 		await expect.element(page.getByText('7.6 h')).toBeInTheDocument();
 	});
 
+	it('shows the office a day was worked at, and nothing for a day without one', async () => {
+		render(DiaryTable, {
+			weeks: weeksFor(),
+			offices: [{ id: 1, name: 'Office Location 1' }],
+			onOpenDay: () => {}
+		});
+
+		const officeRow = document.getElementById('day-row-2026-09-15') as HTMLElement;
+		expect(officeRow.textContent).toContain('Office Location 1');
+
+		const homeRow = document.getElementById('day-row-2026-09-14') as HTMLElement;
+		expect(homeRow.textContent).not.toContain('Office Location 1');
+	});
+
 	it('reads "Not yet" for a future day with nothing scheduled', async () => {
 		render(DiaryTable, { weeks: weeksFor(), onOpenDay: () => {} });
 		await expect.element(page.getByText('Not yet').first()).toBeInTheDocument();

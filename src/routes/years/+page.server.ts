@@ -27,19 +27,23 @@ function nextMissingStartYear(existingStartYears: number[]): number {
 export const load: PageServerLoad = () => {
 	const years = listYears(db);
 
-	const rows = years.map((year) => {
-		const { start, end } = fyBounds(year.startYear);
-		const summary = summarise(listRange(db, start, end));
-		return {
-			startYear: year.startYear,
-			rateCentsPerHour: year.rateCentsPerHour,
-			rateNote: year.rateNote,
-			finalisedAt: year.finalisedAt,
-			fy: fySummary(year.startYear),
-			homeMinutes: summary.homeMinutes,
-			claimCents: claimCents(summary.homeMinutes, year.rateCentsPerHour)
-		};
-	});
+	// Newest first: the most recently added year is the one being worked on, so it belongs at
+	// the top of the list.
+	const rows = years
+		.map((year) => {
+			const { start, end } = fyBounds(year.startYear);
+			const summary = summarise(listRange(db, start, end));
+			return {
+				startYear: year.startYear,
+				rateCentsPerHour: year.rateCentsPerHour,
+				rateNote: year.rateNote,
+				finalisedAt: year.finalisedAt,
+				fy: fySummary(year.startYear),
+				homeMinutes: summary.homeMinutes,
+				claimCents: claimCents(summary.homeMinutes, year.rateCentsPerHour)
+			};
+		})
+		.reverse();
 
 	const nextStartYear = nextMissingStartYear(years.map((year) => year.startYear));
 

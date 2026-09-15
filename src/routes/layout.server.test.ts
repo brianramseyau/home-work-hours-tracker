@@ -32,8 +32,19 @@ describe('root layout load', () => {
 		expect(load(layoutEvent())).toEqual({
 			today: '2026-09-14',
 			currentFy: { startYear: 2026, label: 'FY27', slug: 'fy27', range: 'Jul 2026 – Jun 2027' },
+			years: [],
 			filled: 0
 		});
+	});
+
+	it('lists every year for the switcher, newest first', async () => {
+		const { createYear } = await import('$lib/server/repo/years');
+		createYear(db, { startYear: 2025, rateCentsPerHour: 68 });
+		createYear(db, { startYear: 2026, rateCentsPerHour: 70 });
+
+		const { load } = await import('./+layout.server');
+		const result = load(layoutEvent()) as { years: { label: string }[] };
+		expect(result.years.map((year) => year.label)).toEqual(['FY27', 'FY26']);
 	});
 
 	it('fills days from the schedule on the first navigation of the day', async () => {

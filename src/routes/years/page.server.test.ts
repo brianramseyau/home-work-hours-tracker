@@ -37,6 +37,15 @@ describe('load', () => {
 		});
 	});
 
+	it('lists years newest first', async () => {
+		createYear(db, { startYear: 2025, rateCentsPerHour: 68 });
+		createYear(db, { startYear: 2026, rateCentsPerHour: 70 });
+
+		const { load } = await import('./+page.server');
+		const result = load({} as Parameters<typeof load>[0]) as { years: { fy: { label: string } }[] };
+		expect(result.years.map((row) => row.fy.label)).toEqual(['FY27', 'FY26']);
+	});
+
 	it('lists years with their computed home hours and claim', async () => {
 		createYear(db, { startYear: 2026, rateCentsPerHour: 70, rateNote: 'ATO fixed rate' });
 		upsertDay(

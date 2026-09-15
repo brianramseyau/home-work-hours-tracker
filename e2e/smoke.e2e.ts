@@ -21,8 +21,12 @@ for (const colorScheme of ['light', 'dark'] as const) {
 			for (const label of ['Week', 'Year', 'Export', 'Settings']) {
 				await expect(nav.getByRole('link', { name: label })).toBeVisible();
 			}
-			// The year switcher (not the "Set up FY27" call to action).
-			await expect(page.getByRole('link', { name: /^FY27/ })).toBeVisible();
+			// The year switcher (not the "Set up FY27" call to action). It's a pop-out trigger
+			// now, so it's a button; opening it lists every year and links to the years page.
+			const switcher = page.locator('button:visible', { hasText: /^FY27/ }).first();
+			await expect(switcher).toBeVisible();
+			await switcher.click();
+			await expect(page.getByRole('link', { name: 'Manage financial years' })).toBeVisible();
 
 			const results = await new AxeBuilder({ page }).analyze();
 			expect(results.violations).toEqual([]);

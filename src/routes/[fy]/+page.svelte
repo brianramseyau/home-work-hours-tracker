@@ -63,11 +63,11 @@
 				rateCentsPerHour={data.year?.rateCentsPerHour ?? null}
 			/>
 		</div>
-		<WeekPager {weeks} {currentWeek} onOpenDay={openEditor} />
+		<WeekPager {weeks} {currentWeek} offices={data.offices} onOpenDay={openEditor} />
 	</div>
 
 	<div class="hidden lg:block">
-		<DiaryTable {weeks} onOpenDay={openEditor} finalised={data.finalised} />
+		<DiaryTable {weeks} offices={data.offices} onOpenDay={openEditor} finalised={data.finalised} />
 	</div>
 
 	<aside class="hidden lg:sticky lg:top-6 lg:block" aria-label="Summary">

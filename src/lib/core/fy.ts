@@ -118,3 +118,11 @@ export function fySummary(startYear: number): FySummary {
 		range: fyRangeLabel(startYear)
 	};
 }
+
+const FY_PATH = /^\/(fy\d{2})(?:\/|$)/;
+
+/** The financial year a `/[fy]/...` pathname is showing, or null for any other route. */
+export function fyFromPath(pathname: string): FySummary | null {
+	const match = FY_PATH.exec(pathname);
+	return match ? fySummary(parseFySlug(match[1])) : null;
+}

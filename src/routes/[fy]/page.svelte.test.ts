@@ -69,6 +69,35 @@ describe('Diary page', () => {
 		await expect.element(page.getByRole('button', { name: 'Mark leave' })).toBeInTheDocument();
 	});
 
+	it('shows the office a day was worked at in the diary table', async () => {
+		const days = buildDiaryDays({
+			startYear: 2026,
+			today: '2026-09-14',
+			days: [
+				{
+					date: '2026-09-14',
+					kind: 'work',
+					officeId: 1,
+					notes: null,
+					source: 'manual',
+					blocks: []
+				}
+			],
+			schedules: [],
+			holidays: [],
+			standard: { start: '09:00', end: '17:06', breakMinutes: 30 },
+			includeWeekends: false
+		});
+		render(Page, {
+			data: baseData({ days })
+		} as unknown as Parameters<typeof render<typeof Page>>[1]);
+
+		// Scoped to the table row by id, so this proves the desktop DiaryTable column rather
+		// than the mobile WeekPager row (both are in the DOM regardless of viewport width).
+		const row = document.getElementById('day-row-2026-09-14') as HTMLElement;
+		expect(row.textContent).toContain('Office Location 1');
+	});
+
 	it('shows a finalised banner linking to Years', async () => {
 		render(Page, {
 			data: baseData({ finalised: true })

@@ -12,10 +12,17 @@
 </svelte:head>
 
 <div class="mx-auto max-w-2xl">
-	<h1 class="font-display text-2xl font-semibold">Financial years</h1>
-	<p class="mt-1 text-sm text-muted-foreground">
-		Each year has its own ATO fixed rate. Finalise a year once its figures are locked in.
-	</p>
+	<div class="flex items-start justify-between gap-4">
+		<div>
+			<h1 class="font-display text-2xl font-semibold">Financial years</h1>
+			<p class="mt-1 text-sm text-muted-foreground">
+				Each year has its own ATO fixed rate. Finalise a year once its figures are locked in.
+			</p>
+		</div>
+		<form method="POST" action="?/create" use:enhance class="shrink-0">
+			<Button type="submit" variant="outline">{`Add ${data.nextFy.label}`}</Button>
+		</form>
+	</div>
 
 	{#if data.years.length === 0}
 		<p class="mt-8 text-sm text-muted-foreground">No financial years yet.</p>
@@ -26,8 +33,4 @@
 			{/each}
 		</div>
 	{/if}
-
-	<form method="POST" action="?/create" use:enhance class="mt-6">
-		<Button type="submit" variant="outline">{`Add ${data.nextFy.label}`}</Button>
-	</form>
 </div>

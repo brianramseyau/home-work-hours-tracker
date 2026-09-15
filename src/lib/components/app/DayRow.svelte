@@ -6,7 +6,11 @@
 	import { diaryDayLabel, isUpcoming, type DiaryDay } from '$lib/core/diary';
 	import { formatHours } from '$lib/core/time';
 
-	let { day, onOpen }: { day: DiaryDay; onOpen: (date: string) => void } = $props();
+	let {
+		day,
+		officeName = null,
+		onOpen
+	}: { day: DiaryDay; officeName?: string | null; onOpen: (date: string) => void } = $props();
 </script>
 
 <button
@@ -18,7 +22,12 @@
 	<span class="w-16 shrink-0 text-sm text-muted-foreground">
 		{formatShortDate(day.date)}
 	</span>
-	<span class="flex-1 text-sm font-medium">{diaryDayLabel(day)}</span>
+	<span class="flex min-w-0 flex-1 flex-col">
+		<span class="text-sm font-medium">{diaryDayLabel(day)}</span>
+		{#if officeName}
+			<span class="truncate text-xs text-muted-foreground">{officeName}</span>
+		{/if}
+	</span>
 	{#if day.source === 'prefill' || day.status === 'ghost'}
 		<Sparkles class="size-3.5 text-muted-foreground" aria-hidden="true" title="From schedule" />
 		<span class="sr-only">From schedule</span>

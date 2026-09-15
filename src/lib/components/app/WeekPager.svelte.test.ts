@@ -63,6 +63,35 @@ describe('WeekPager', () => {
 		expect(opened).toBe('2026-09-14');
 	});
 
+	it('passes the office a day was worked at through to its row', async () => {
+		const days = buildDiaryDays({
+			startYear: 2026,
+			today: TODAY,
+			days: [
+				{
+					date: '2026-09-14',
+					kind: 'work',
+					officeId: 1,
+					notes: null,
+					source: 'manual',
+					blocks: []
+				}
+			],
+			schedules: [],
+			holidays: [],
+			standard: STANDARD,
+			includeWeekends: false
+		});
+
+		render(WeekPager, {
+			weeks: groupDiaryDaysByWeek(days),
+			currentWeek: CURRENT_WEEK,
+			offices: [{ id: 1, name: 'Office Location 1' }],
+			onOpenDay: () => {}
+		});
+		await expect.element(page.getByText('Office Location 1')).toBeInTheDocument();
+	});
+
 	it('falls back to the first week when the current week is not found', async () => {
 		render(WeekPager, { weeks: weeksFor(), currentWeek: 999, onOpenDay: () => {} });
 		await expect.element(page.getByText('Week 1', { exact: true })).toBeInTheDocument();
