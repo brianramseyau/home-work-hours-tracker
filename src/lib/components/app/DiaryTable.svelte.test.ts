@@ -47,7 +47,7 @@ function weeksFor() {
 describe('DiaryTable', () => {
 	it('renders a week header and one row per day', async () => {
 		render(DiaryTable, { weeks: weeksFor(), onOpenDay: () => {} });
-		await expect.element(page.getByText('Week 1 (01–03)')).toBeInTheDocument();
+		await expect.element(page.getByText('Week 1 (1–3 Jul)')).toBeInTheDocument();
 		expect(document.querySelectorAll('tbody tr').length).toBeGreaterThan(2);
 	});
 
@@ -114,7 +114,7 @@ describe('DiaryTable', () => {
 		let opened: string | null = null;
 		render(DiaryTable, { weeks: weeksFor(), onOpenDay: (date) => (opened = date) });
 
-		await page.getByRole('button', { name: 'Mon 14' }).first().click();
+		await page.getByRole('button', { name: 'Mon 14 Sep' }).first().click();
 		expect(opened).toBe('2026-09-14');
 	});
 

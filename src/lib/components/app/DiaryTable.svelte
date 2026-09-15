@@ -5,7 +5,7 @@
 	import Sparkles from '@lucide/svelte/icons/sparkles';
 	import { Button } from '$lib/components/ui/button';
 	import TypeSwatch from './TypeSwatch.svelte';
-	import { weekdayShort } from '$lib/core/date';
+	import { formatDateRange, formatShortDate } from '$lib/core/date';
 	import {
 		diaryDayLabel,
 		diaryOfficeName,
@@ -47,10 +47,6 @@
 	$effect(() => {
 		if (savedDate && savedDate === editingDate) editingDate = null;
 	});
-
-	function weekRange(week: DiaryDay[]): string {
-		return `${week[0].date.slice(8, 10)}–${week.at(-1)!.date.slice(8, 10)}`;
-	}
 
 	// Only ever called from the times button below, which is disabled unless this is exactly
 	// the single-block home day it needs to be — so day.blocks[0] is always safe to read.
@@ -130,7 +126,7 @@
 					scope="colgroup"
 					class="sticky top-0 z-10 bg-background/95 py-1 text-left text-xs font-medium text-muted-foreground backdrop-blur"
 				>
-					{`Week ${week[0].week} (${weekRange(week)})`}
+					{`Week ${week[0].week} (${formatDateRange(week[0].date, week.at(-1)!.date)})`}
 				</th>
 			</tr>
 			{#each week as day (day.date)}
@@ -149,7 +145,7 @@
 							class="text-muted-foreground hover:underline"
 							onclick={() => onOpenDay(day.date)}
 						>
-							{`${weekdayShort(day.date)} ${day.date.slice(8, 10)}`}
+							{formatShortDate(day.date)}
 						</button>
 					</td>
 					<td class="py-1.5 pr-2 font-medium">
