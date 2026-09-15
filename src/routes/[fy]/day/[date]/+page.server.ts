@@ -15,16 +15,17 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 
 	// The shared actions already reject a date outside this FY (`dayGuardFailure`); checking it
 	// here too keeps the 404 consistent instead of rendering a deep link that can never save.
-	const { fyBounds, today, schedules, holidays, settings } = await parent();
+	const { fyBounds, today, year, schedules, holidays, settings } = await parent();
 	if (params.date < fyBounds.start || params.date > fyBounds.end) {
 		error(404, 'Not a date in this financial year');
 	}
 
 	// A day after today isn't stored until it's reached, so without a row it opens on what the
 	// schedule will make it — the same preview the Diary shows — rather than an empty "Off" day.
+	// Not in a finalised year, which nothing is ever planned into again.
 	const row =
 		getDay(db, params.date) ??
-		(params.date > today
+		(params.date > today && !year?.finalisedAt
 			? scheduledDay(params.date, {
 					schedules,
 					holidays,

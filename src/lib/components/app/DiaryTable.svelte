@@ -6,7 +6,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import TypeSwatch from './TypeSwatch.svelte';
 	import { weekdayShort } from '$lib/core/date';
-	import { diaryDayLabel, type DiaryDay } from '$lib/core/diary';
+	import { diaryDayLabel, isUpcoming, type DiaryDay } from '$lib/core/diary';
 	import { formatHours } from '$lib/core/time';
 
 	let {
@@ -129,7 +129,7 @@
 					class={`border-b outline-none focus-visible:bg-accent ${day.status === 'ghost' ? 'text-muted-foreground' : ''}`}
 				>
 					<td class="py-1.5 pr-2">
-						<TypeSwatch type={day.displayType} future={day.status === 'future'} class="size-3.5" />
+						<TypeSwatch type={day.displayType} future={isUpcoming(day)} class="size-3.5" />
 					</td>
 					<td class="py-1.5 pr-2">
 						<button

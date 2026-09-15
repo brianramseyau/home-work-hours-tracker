@@ -120,6 +120,22 @@ describe('buildDiaryDays', () => {
 		expect(diaryDayLabel(nextMonday)).toBe('Not yet');
 	});
 
+	it('previews nothing in a finalised year, which is never planned into again', () => {
+		const rows = buildDiaryDays({
+			startYear: 2026,
+			today: '2026-09-14',
+			days: [],
+			schedules: homeWeekdaySchedule(),
+			holidays: [],
+			standard: STANDARD,
+			includeWeekends: false,
+			finalised: true
+		});
+
+		expect(rows.some((row) => row.status === 'ghost')).toBe(false);
+		expect(rows.find((row) => row.date === '2026-09-21')).toMatchObject({ status: 'future' });
+	});
+
 	it('marks a past day with no row as off, not future', () => {
 		const rows = buildDiaryDays({
 			startYear: 2026,
@@ -231,32 +247,37 @@ describe('scheduledDay', () => {
 });
 
 describe('diaryDayLabel and isUpcoming', () => {
-	const [recordedOff, ghost, future] = buildDiaryDays({
+	// Today is 1 Jul and the schedule only starts on the 3rd, so the 2nd is a future day with
+	// nothing scheduled and the 3rd is a schedule preview.
+	const [pastEmpty, unscheduled, preview] = buildDiaryDays({
 		startYear: 2026,
 		today: '2026-07-01',
 		days: [],
 		schedules: homeWeekdaySchedule().map((schedule) => ({
 			...schedule,
-			effectiveFrom: '2026-07-02'
+			effectiveFrom: '2026-07-03'
 		})),
 		holidays: [],
 		standard: STANDARD,
 		includeWeekends: false
 	}).filter((row) => ['2026-07-01', '2026-07-02', '2026-07-03'].includes(row.date));
 
-	it('labels a past empty day "Off" and a future unscheduled one "Not yet"', () => {
-		expect(recordedOff.status).toBe('off');
-		expect(diaryDayLabel(recordedOff)).toBe('Off');
-		expect(diaryDayLabel(ghost)).toBe('Home');
+	it('labels a past empty day "Off", a future unscheduled one "Not yet", a preview by type', () => {
+		expect([pastEmpty.status, unscheduled.status, preview.status]).toEqual([
+			'off',
+			'future',
+			'ghost'
+		]);
+		expect(diaryDayLabel(pastEmpty)).toBe('Off');
+		expect(diaryDayLabel(unscheduled)).toBe('Not yet');
+		expect(diaryDayLabel(preview)).toBe('Home');
 	});
 
-	it('treats ghost and future days as upcoming, and nothing on or before today', () => {
-		expect(isUpcoming(recordedOff)).toBe(false);
-		expect(isUpcoming(ghost)).toBe(true);
-		expect(future.status).toBe('ghost');
-		expect(
-			isUpcoming({ ...future, status: 'future' }) && !isUpcoming({ ...future, status: 'recorded' })
-		).toBe(true);
+	it('treats future and preview days as upcoming, and nothing on or before today', () => {
+		expect(isUpcoming(pastEmpty)).toBe(false);
+		expect(isUpcoming(unscheduled)).toBe(true);
+		expect(isUpcoming(preview)).toBe(true);
+		expect(isUpcoming({ ...preview, status: 'recorded' })).toBe(false);
 	});
 });
 

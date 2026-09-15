@@ -3,7 +3,7 @@
 	import Sparkles from '@lucide/svelte/icons/sparkles';
 	import TypeSwatch from './TypeSwatch.svelte';
 	import { formatShortDate } from '$lib/core/date';
-	import { diaryDayLabel, type DiaryDay } from '$lib/core/diary';
+	import { diaryDayLabel, isUpcoming, type DiaryDay } from '$lib/core/diary';
 	import { formatHours } from '$lib/core/time';
 
 	let { day, onOpen }: { day: DiaryDay; onOpen: (date: string) => void } = $props();
@@ -14,7 +14,7 @@
 	onclick={() => onOpen(day.date)}
 	class={`flex w-full items-center gap-3 border-b py-2.5 text-left last:border-b-0 ${day.status === 'ghost' ? 'text-muted-foreground' : ''}`}
 >
-	<TypeSwatch type={day.displayType} future={day.status === 'future'} class="size-4 shrink-0" />
+	<TypeSwatch type={day.displayType} future={isUpcoming(day)} class="size-4 shrink-0" />
 	<span class="w-16 shrink-0 text-sm text-muted-foreground">
 		{formatShortDate(day.date)}
 	</span>

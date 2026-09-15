@@ -35,15 +35,17 @@ export interface BuildDiaryDaysInput {
 	holidays: PrefillHoliday[];
 	standard: HomeBlock;
 	includeWeekends: boolean;
+	/** A finalised year is frozen — nothing is ever planned into it again, so nothing is previewed. */
+	finalised?: boolean;
 }
 
-export type ScheduleInput = Pick<
+export type ScheduledDayInput = Pick<
 	BuildDiaryDaysInput,
 	'schedules' | 'holidays' | 'standard' | 'includeWeekends'
 >;
 
 /** What the schedule will make `date` once it's reached, or `null` for a day it leaves off. */
-export function scheduledDay(date: string, input: ScheduleInput): Day | null {
+export function scheduledDay(date: string, input: ScheduledDayInput): Day | null {
 	return planPrefill({ from: date, to: date, existing: [], ...input }).inserts[0] ?? null;
 }
 
@@ -119,7 +121,7 @@ export function buildDiaryDays(input: BuildDiaryDaysInput): DiaryDay[] {
 	const tomorrow = addDays(input.today, 1);
 	const ghostFrom = tomorrow > bounds.start ? tomorrow : bounds.start;
 	const ghostByDate =
-		ghostFrom <= bounds.end
+		!input.finalised && ghostFrom <= bounds.end
 			? new Map(
 					planPrefill({
 						from: ghostFrom,

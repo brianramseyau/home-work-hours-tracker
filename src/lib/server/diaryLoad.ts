@@ -10,7 +10,7 @@ import { listRange } from './repo/days';
 export interface DiaryLoadInput {
 	fy: { startYear: number };
 	fyBounds: { start: string; end: string };
-	year: { rateCentsPerHour: number } | null;
+	year: { rateCentsPerHour: number; finalisedAt?: string | null } | null;
 	settings: {
 		standardStart: string;
 		standardEnd: string;
@@ -41,7 +41,8 @@ export function loadDiaryData(input: DiaryLoadInput): DiaryLoadResult {
 			end: input.settings.standardEnd,
 			breakMinutes: input.settings.standardBreakMinutes
 		},
-		includeWeekends: input.settings.includeWeekends
+		includeWeekends: input.settings.includeWeekends,
+		finalised: Boolean(input.year?.finalisedAt)
 	});
 
 	const summary = summarise(days);
