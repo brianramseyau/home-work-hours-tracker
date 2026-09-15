@@ -10,6 +10,7 @@
 	import ThemeToggle from '$lib/components/app/ThemeToggle.svelte';
 	import { Toaster } from '$lib/components/ui/sonner';
 	import { APP_NAME, APP_SHORT_NAME } from '$lib/branding';
+	import { fyFromPath } from '$lib/core/fy';
 	import { navItems } from '$lib/nav';
 	import { registerServiceWorker } from '$lib/pwa';
 	import type { LayoutProps } from './$types';
@@ -17,6 +18,9 @@
 	let { data, children }: LayoutProps = $props();
 
 	const items = $derived(navItems(data.currentFy.slug));
+	// The switcher shows the year you're actually looking at; on any non-FY route (`/years`,
+	// the welcome page) there's none, so it falls back to the current open period.
+	const viewedFy = $derived(fyFromPath(page.url.pathname) ?? data.currentFy);
 
 	// $effect bodies only ever run client-side, so this never runs during SSR.
 	$effect(() => {
@@ -74,7 +78,7 @@
 				>Home Work<br />Hours Tracker</span
 			>
 		</a>
-		<FySwitcher fy={data.currentFy} />
+		<FySwitcher fy={viewedFy} years={data.years} />
 		<NavLinks {items} pathname={page.url.pathname} variant="rail" />
 		<div class="mt-auto flex items-end justify-between gap-2">
 			<AppFooter version={__APP_VERSION__} />
@@ -91,7 +95,7 @@
 				<span class="font-display font-semibold">{APP_SHORT_NAME}</span>
 			</a>
 			<div class="ml-auto flex items-center gap-1">
-				<FySwitcher fy={data.currentFy} compact />
+				<FySwitcher fy={viewedFy} years={data.years} compact />
 				<ThemeToggle />
 			</div>
 		</header>

@@ -6,14 +6,20 @@
 	import { Button } from '$lib/components/ui/button';
 	import TypeSwatch from './TypeSwatch.svelte';
 	import { weekdayShort } from '$lib/core/date';
-	import { diaryDayLabel, isUpcoming, type DiaryDay } from '$lib/core/diary';
+	import { diaryDayLabel, diaryOfficeName, isUpcoming, type DiaryDay } from '$lib/core/diary';
 	import { formatHours } from '$lib/core/time';
 
 	let {
 		weeks,
 		onOpenDay,
+		offices = [],
 		finalised = false
-	}: { weeks: DiaryDay[][]; onOpenDay: (date: string) => void; finalised?: boolean } = $props();
+	}: {
+		weeks: DiaryDay[][];
+		onOpenDay: (date: string) => void;
+		offices?: { id: number; name: string }[];
+		finalised?: boolean;
+	} = $props();
 
 	const flatDays = $derived(weeks.flat());
 
@@ -114,7 +120,7 @@
 		{#each weeks as week (week[0].week)}
 			<tr>
 				<th
-					colspan="6"
+					colspan="7"
 					scope="colgroup"
 					class="sticky top-0 z-10 bg-background/95 py-1 text-left text-xs font-medium text-muted-foreground backdrop-blur"
 				>
@@ -145,6 +151,7 @@
 							{diaryDayLabel(day)}
 						</button>
 					</td>
+					<td class="py-1.5 pr-2 text-muted-foreground">{diaryOfficeName(day, offices)}</td>
 					<td class="py-1.5 pr-2">
 						{#if editingDate === day.date}
 							<form

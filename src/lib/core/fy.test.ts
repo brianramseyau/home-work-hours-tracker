@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	datesInFy,
 	fyBounds,
+	fyFromPath,
 	fyLabel,
 	fyRangeLabel,
 	fySlug,
@@ -59,6 +60,22 @@ describe('parseFyLabel and parseFySlug', () => {
 	it('rejects a malformed label or slug', () => {
 		expect(() => parseFyLabel('27')).toThrow(/Expected a label/);
 		expect(() => parseFySlug('FY27')).toThrow(/Expected a slug/);
+	});
+});
+
+describe('fyFromPath', () => {
+	it.each([
+		['/fy27', 'FY27'],
+		['/fy27/day/2026-09-14', 'FY27'],
+		['/fy26/export', 'FY26']
+	])('%s is %s', (path, label) => {
+		expect(fyFromPath(path)?.label).toBe(label);
+	});
+
+	it('is null on a route that is not a financial year', () => {
+		expect(fyFromPath('/years')).toBeNull();
+		expect(fyFromPath('/fy27ish')).toBeNull();
+		expect(fyFromPath('/')).toBeNull();
 	});
 });
 

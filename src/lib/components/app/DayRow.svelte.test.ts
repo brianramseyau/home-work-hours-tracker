@@ -68,6 +68,15 @@ describe('DayRow', () => {
 		expect(page.getByText('From schedule').elements().length).toBe(0);
 	});
 
+	it('shows the office a day was worked at when given one', async () => {
+		render(DayRow, {
+			day: { ...baseDay, officeId: 1, displayType: 'office', blocks: [] },
+			officeName: 'Office Location 1',
+			onOpen: () => {}
+		});
+		await expect.element(page.getByText('Office Location 1')).toBeInTheDocument();
+	});
+
 	it('shows a note indicator when the day has notes', async () => {
 		render(DayRow, { day: { ...baseDay, notes: 'Worked late' }, onOpen: () => {} });
 		await expect.element(page.getByText('Has a note')).toBeInTheDocument();

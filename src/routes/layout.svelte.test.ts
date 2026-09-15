@@ -11,7 +11,12 @@ vi.mock('$app/state', () => ({
 }));
 
 const children = createRawSnippet(() => ({ render: () => '<p>Page body</p>' }));
-const data = { today: '2026-09-14', currentFy: fySummary(2026), filled: 0 };
+const data = {
+	today: '2026-09-14',
+	currentFy: fySummary(2026),
+	years: [fySummary(2026)],
+	filled: 0
+};
 
 describe('root layout', () => {
 	it('wraps the page in the app shell', async () => {
@@ -30,6 +35,27 @@ describe('root layout', () => {
 		await expect
 			.element(page.getByRole('link', { name: 'Source code on GitHub' }))
 			.toBeInTheDocument();
+	});
+
+	it('opens the year switcher from both the rail and the mobile header', async () => {
+		render(Layout, { data, children } as unknown as Parameters<typeof render<typeof Layout>>[1]);
+
+		const triggers = Array.from(document.querySelectorAll('[data-slot="popover-trigger"]'));
+		expect(triggers).toHaveLength(2);
+		triggers.forEach((trigger) => (trigger as HTMLElement).click());
+
+		await expect.element(page.getByRole('link', { name: /FY27/ }).first()).toBeInTheDocument();
+	});
+
+	it('shows the current open period when the route is not a financial year', async () => {
+		appStatePage.url = new URL('http://localhost/years') as typeof appStatePage.url;
+		render(Layout, {
+			data: { ...data, currentFy: fySummary(2025) },
+			children
+		} as unknown as Parameters<typeof render<typeof Layout>>[1]);
+
+		await expect.element(page.getByRole('button', { name: /FY26/ }).first()).toBeInTheDocument();
+		appStatePage.url = new URL('http://localhost/fy27/export') as typeof appStatePage.url;
 	});
 
 	it('does not toast when nothing was filled', async () => {
