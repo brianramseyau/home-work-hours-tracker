@@ -3,6 +3,7 @@ import {
 	addDays,
 	daysBetween,
 	eachDate,
+	formatDateRange,
 	formatFullDate,
 	formatIsoDate,
 	formatShortDate,
@@ -132,6 +133,33 @@ describe('formatFullDate', () => {
 describe('formatShortDate', () => {
 	it('formats an ISO date as weekday, day and short month, without the year', () => {
 		expect(formatShortDate('2026-09-14')).toBe('Mon 14 Sep');
+	});
+});
+
+describe('formatDateRange', () => {
+	it('names the month once when both dates fall in the same month', () => {
+		expect(formatDateRange('2026-09-21', '2026-09-27')).toBe('21–27 Sep');
+	});
+
+	it('names both months when the range crosses a month boundary', () => {
+		expect(formatDateRange('2026-09-29', '2026-10-05')).toBe('29 Sep–5 Oct');
+	});
+
+	it('names both years when the range crosses a year boundary', () => {
+		expect(formatDateRange('2026-12-28', '2027-01-03')).toBe('28 Dec 2026–3 Jan 2027');
+	});
+
+	it('collapses to a single date when from and to are the same day', () => {
+		expect(formatDateRange('2026-07-01', '2026-07-01')).toBe('1 Jul');
+	});
+
+	it('rejects an invalid date on either end', () => {
+		expect(() => formatDateRange('2026-13-01', '2026-09-05')).toThrow(
+			'is not a valid calendar date'
+		);
+		expect(() => formatDateRange('2026-09-01', '2026-13-05')).toThrow(
+			'is not a valid calendar date'
+		);
 	});
 });
 

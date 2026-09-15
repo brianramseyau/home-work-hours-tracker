@@ -74,6 +74,27 @@ export function weekdayShort(iso: string): string {
 	return WEEKDAY_NAMES[weekday(iso)];
 }
 
+/**
+ * "21–27 Sep" for a week within one month, "29 Sep–5 Oct" when it spans two, "28 Dec 2026–3
+ * Jan 2027" when it spans a year boundary, or just "1 Jul" for a single-day range — a week
+ * heading's date range, always naming the month (and year, when it changes) so it isn't
+ * ambiguous out of context. Throws for either date the same way `parseIsoDate` does.
+ */
+export function formatDateRange(from: string, to: string): string {
+	parseIsoDate(from);
+	parseIsoDate(to);
+	const [fromYear, fromMonth, fromDay] = from.split('-');
+	const [toYear, toMonth, toDay] = to.split('-');
+	const sameYear = fromYear === toYear;
+	const toLabel = `${Number(toDay)} ${MONTH_NAMES[Number(toMonth) - 1]}${sameYear ? '' : ` ${toYear}`}`;
+	if (from === to) return toLabel;
+	const fromLabel =
+		sameYear && fromMonth === toMonth
+			? `${Number(fromDay)}`
+			: `${Number(fromDay)} ${MONTH_NAMES[Number(fromMonth) - 1]}${sameYear ? '' : ` ${fromYear}`}`;
+	return `${fromLabel}–${toLabel}`;
+}
+
 /** The Monday of the week containing `iso`. */
 export function mondayOf(iso: string): string {
 	return addDays(iso, -(weekday(iso) - 1));
