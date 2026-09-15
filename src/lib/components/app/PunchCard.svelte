@@ -1,7 +1,6 @@
 <script lang="ts">
 	import TypeSwatch from './TypeSwatch.svelte';
-	import { displayTypeLabel } from '$lib/core/dayType';
-	import type { DiaryDay } from '$lib/core/diary';
+	import { diaryDayLabel, isUpcoming, type DiaryDay } from '$lib/core/diary';
 	import { formatHours } from '$lib/core/time';
 
 	let { weeks, onSelectDay }: { weeks: DiaryDay[][]; onSelectDay?: (date: string) => void } =
@@ -14,7 +13,9 @@
 	const delayStep = $derived(600 / Math.max(cellIndex.size, 1));
 
 	function describe(day: DiaryDay): string {
-		const label = displayTypeLabel(day.displayType);
+		const label = diaryDayLabel(day);
+		// A preview's hours haven't been worked yet, so they're never read out as if they had.
+		if (day.status === 'ghost') return `${day.date}, ${label} from schedule`;
 		return day.homeMinutes > 0
 			? `${day.date}, ${label}, ${formatHours(day.homeMinutes)} h`
 			: `${day.date}, ${label}`;
@@ -40,7 +41,7 @@
 						title={describe(day)}
 						aria-label={describe(day)}
 					>
-						<TypeSwatch type={day.displayType} future={day.status === 'future'} class="size-full" />
+						<TypeSwatch type={day.displayType} future={isUpcoming(day)} class="size-full" />
 					</button>
 				</div>
 			{/each}

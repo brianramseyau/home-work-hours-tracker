@@ -17,11 +17,36 @@ beforeEach(() => {
 	testDb.current = db;
 });
 
-function loadEvent(date: string, fyBounds = { start: '2026-07-01', end: '2027-06-30' }) {
+const HOME_WEEKDAYS = [
+	{
+		effectiveFrom: '2026-07-01',
+		cycleWeeks: 1 as const,
+		anchorMonday: '2026-06-29',
+		days: [1, 2, 3, 4, 5].map((weekday) => ({
+			weekIndex: 0,
+			weekday,
+			mode: 'home' as const,
+			officeId: null
+		}))
+	}
+];
+
+function loadEvent(date: string, schedules: typeof HOME_WEEKDAYS = []) {
 	return {
 		params: { date },
-		parent: async () => ({ fyBounds })
-	} as Parameters<Awaited<typeof import('./+page.server')>['load']>[0];
+		parent: async () => ({
+			fyBounds: { start: '2026-07-01', end: '2027-06-30' },
+			today: '2026-09-15',
+			schedules,
+			holidays: [],
+			settings: {
+				standardStart: '09:00',
+				standardEnd: '17:06',
+				standardBreakMinutes: 30,
+				includeWeekends: false
+			}
+		})
+	} as unknown as Parameters<Awaited<typeof import('./+page.server')>['load']>[0];
 }
 
 interface LoadResult {
@@ -65,6 +90,24 @@ describe('load', () => {
 			blocks: [],
 			displayType: 'off'
 		});
+	});
+
+	it('opens a future day with no row on what the schedule will make it', async () => {
+		const { load } = await import('./+page.server');
+		const result = (await load(loadEvent('2026-09-22', HOME_WEEKDAYS))) as LoadResult;
+		expect(result.day).toEqual({
+			date: '2026-09-22',
+			officeId: null,
+			notes: null,
+			blocks: [{ start: '09:00', end: '17:06', breakMinutes: 30 }],
+			displayType: 'home'
+		});
+	});
+
+	it('does not preview the schedule for a past day with no row', async () => {
+		const { load } = await import('./+page.server');
+		const result = (await load(loadEvent('2026-09-14', HOME_WEEKDAYS))) as LoadResult;
+		expect(result.day).toMatchObject({ blocks: [], displayType: 'off' });
 	});
 
 	it('loads an existing day with its display type', async () => {

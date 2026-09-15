@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { buildDiaryDays, countsByDisplayType, groupDiaryDaysByWeek } from './diary';
+import {
+	buildDiaryDays,
+	countsByDisplayType,
+	diaryDayLabel,
+	groupDiaryDaysByWeek,
+	isUpcoming,
+	scheduledDay
+} from './diary';
 
 const STANDARD = { start: '09:00', end: '17:06', breakMinutes: 30 };
 
@@ -80,7 +87,7 @@ describe('buildDiaryDays', () => {
 		expect(tuesday).toMatchObject({ status: 'ghost', kind: 'public_holiday' });
 	});
 
-	it('does not preview past the end of the current week', () => {
+	it('previews every remaining day of the financial year, not just the current week', () => {
 		const rows = buildDiaryDays({
 			startYear: 2026,
 			today: '2026-09-14', // Monday
@@ -91,9 +98,26 @@ describe('buildDiaryDays', () => {
 			includeWeekends: false
 		});
 
-		// The following Monday is a new week — not a ghost preview, and not yet reached either.
 		const nextMonday = rows.find((row) => row.date === '2026-09-21');
+		expect(nextMonday).toMatchObject({ status: 'ghost', displayType: 'home' });
+		const lastDay = rows.find((row) => row.date === '2027-06-30');
+		expect(lastDay).toMatchObject({ status: 'ghost', displayType: 'home' });
+	});
+
+	it('leaves a future day the schedule does not cover as future, reading "Not yet"', () => {
+		const rows = buildDiaryDays({
+			startYear: 2026,
+			today: '2026-09-14',
+			days: [],
+			schedules: [],
+			holidays: [],
+			standard: STANDARD,
+			includeWeekends: false
+		});
+
+		const nextMonday = rows.find((row) => row.date === '2026-09-21')!;
 		expect(nextMonday).toMatchObject({ status: 'future', displayType: 'off' });
+		expect(diaryDayLabel(nextMonday)).toBe('Not yet');
 	});
 
 	it('marks a past day with no row as off, not future', () => {
@@ -111,7 +135,7 @@ describe('buildDiaryDays', () => {
 		expect(earlierMonday).toMatchObject({ status: 'off', displayType: 'off', homeMinutes: 0 });
 	});
 
-	it('has no ghost rows at all when today is the last visible day of the week', () => {
+	it('never previews today or an earlier day', () => {
 		const rows = buildDiaryDays({
 			startYear: 2026,
 			today: '2026-09-18', // Friday, and weekends are hidden
@@ -122,7 +146,8 @@ describe('buildDiaryDays', () => {
 			includeWeekends: false
 		});
 
-		expect(rows.some((row) => row.status === 'ghost')).toBe(false);
+		expect(rows.some((row) => row.date <= '2026-09-18' && row.status === 'ghost')).toBe(false);
+		expect(rows.find((row) => row.date === '2026-09-21')).toMatchObject({ status: 'ghost' });
 	});
 
 	it('previews Saturday when weekends are included and the week is not over yet', () => {
@@ -152,7 +177,7 @@ describe('buildDiaryDays', () => {
 		expect(saturday).toMatchObject({ status: 'ghost', displayType: 'home' });
 	});
 
-	it('has no ghost rows when viewing a financial year other than the current one', () => {
+	it('previews a future financial year from its first day', () => {
 		const rows = buildDiaryDays({
 			startYear: 2027, // FY28, while today is in FY27
 			today: '2026-09-14',
@@ -163,7 +188,7 @@ describe('buildDiaryDays', () => {
 			includeWeekends: false
 		});
 
-		expect(rows.every((row) => row.status === 'future')).toBe(true);
+		expect(rows.every((row) => row.status === 'ghost')).toBe(true);
 	});
 
 	it('treats every day of an entirely past financial year as off, not future', () => {
@@ -178,6 +203,60 @@ describe('buildDiaryDays', () => {
 		});
 
 		expect(rows.every((row) => row.status === 'off')).toBe(true);
+	});
+});
+
+describe('scheduledDay', () => {
+	const input = {
+		schedules: homeWeekdaySchedule(),
+		holidays: [],
+		standard: STANDARD,
+		includeWeekends: false
+	};
+
+	it('returns what the schedule will make a date', () => {
+		expect(scheduledDay('2026-09-22', input)).toEqual({
+			date: '2026-09-22',
+			kind: 'work',
+			officeId: null,
+			notes: null,
+			source: 'prefill',
+			blocks: [STANDARD]
+		});
+	});
+
+	it('returns null for a date the schedule leaves off', () => {
+		expect(scheduledDay('2026-09-19', input)).toBeNull(); // a Saturday
+	});
+});
+
+describe('diaryDayLabel and isUpcoming', () => {
+	const [recordedOff, ghost, future] = buildDiaryDays({
+		startYear: 2026,
+		today: '2026-07-01',
+		days: [],
+		schedules: homeWeekdaySchedule().map((schedule) => ({
+			...schedule,
+			effectiveFrom: '2026-07-02'
+		})),
+		holidays: [],
+		standard: STANDARD,
+		includeWeekends: false
+	}).filter((row) => ['2026-07-01', '2026-07-02', '2026-07-03'].includes(row.date));
+
+	it('labels a past empty day "Off" and a future unscheduled one "Not yet"', () => {
+		expect(recordedOff.status).toBe('off');
+		expect(diaryDayLabel(recordedOff)).toBe('Off');
+		expect(diaryDayLabel(ghost)).toBe('Home');
+	});
+
+	it('treats ghost and future days as upcoming, and nothing on or before today', () => {
+		expect(isUpcoming(recordedOff)).toBe(false);
+		expect(isUpcoming(ghost)).toBe(true);
+		expect(future.status).toBe('ghost');
+		expect(
+			isUpcoming({ ...future, status: 'future' }) && !isUpcoming({ ...future, status: 'recorded' })
+		).toBe(true);
 	});
 });
 

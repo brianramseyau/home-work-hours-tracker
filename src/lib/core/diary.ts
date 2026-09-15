@@ -1,11 +1,11 @@
 // Builds one row per date in a financial year for the Diary and the year punch card: a
-// persisted day where one exists, a schedule-derived "ghost" preview for the rest of the
-// current week, or an empty placeholder otherwise. Pure — no DB, no `Date.now()`.
+// persisted day where one exists, a schedule-derived "ghost" preview for every day after today
+// that has none, or an empty placeholder otherwise. Pure — no DB, no `Date.now()`.
 
-import { addDays, mondayOf, weekday as weekdayOf } from './date';
+import { addDays, weekday as weekdayOf } from './date';
 import type { Day, DayKind, DaySource, DisplayType, HomeBlock } from './dayType';
-import { displayType, DISPLAY_TYPES } from './dayType';
-import { datesInFy, fyStartYear, weekOfFy } from './fy';
+import { displayType, displayTypeLabel, DISPLAY_TYPES } from './dayType';
+import { datesInFy, fyBounds, weekOfFy } from './fy';
 import { planPrefill, type PrefillHoliday } from './prefill';
 import type { Schedule } from './schedule';
 import { dayHomeMinutes } from './totals';
@@ -37,9 +37,24 @@ export interface BuildDiaryDaysInput {
 	includeWeekends: boolean;
 }
 
-/** The last date of "the rest of the current week" that ghost rows preview. */
-function endOfCurrentWeek(today: string, includeWeekends: boolean): string {
-	return addDays(mondayOf(today), includeWeekends ? 6 : 4);
+export type ScheduleInput = Pick<
+	BuildDiaryDaysInput,
+	'schedules' | 'holidays' | 'standard' | 'includeWeekends'
+>;
+
+/** What the schedule will make `date` once it's reached, or `null` for a day it leaves off. */
+export function scheduledDay(date: string, input: ScheduleInput): Day | null {
+	return planPrefill({ from: date, to: date, existing: [], ...input }).inserts[0] ?? null;
+}
+
+/** What a diary day reads as. A day not reached yet, with nothing scheduled, isn't "Off" yet. */
+export function diaryDayLabel(day: DiaryDay): string {
+	return day.status === 'future' ? 'Not yet' : displayTypeLabel(day.displayType);
+}
+
+/** A day after today — hatched on the punch card whatever the schedule previews for it. */
+export function isUpcoming(day: DiaryDay): boolean {
+	return day.status === 'ghost' || day.status === 'future';
 }
 
 function toDiaryDay(
@@ -97,15 +112,18 @@ export function groupDiaryDaysByWeek(days: DiaryDay[]): DiaryDay[][] {
 export function buildDiaryDays(input: BuildDiaryDaysInput): DiaryDay[] {
 	const existingByDate = new Map(input.days.map((day) => [day.date, day]));
 
-	const isCurrentFy = fyStartYear(input.today) === input.startYear;
-	const ghostFrom = addDays(input.today, 1);
-	const ghostTo = endOfCurrentWeek(input.today, input.includeWeekends);
+	// Future days aren't stored until they're reached (see autoPrefill.ts), so every day after
+	// today without a row previews what the schedule will make it — otherwise the rest of the
+	// year would read as a run of "Off" days that simply haven't happened yet.
+	const bounds = fyBounds(input.startYear);
+	const tomorrow = addDays(input.today, 1);
+	const ghostFrom = tomorrow > bounds.start ? tomorrow : bounds.start;
 	const ghostByDate =
-		isCurrentFy && ghostFrom <= ghostTo
+		ghostFrom <= bounds.end
 			? new Map(
 					planPrefill({
 						from: ghostFrom,
-						to: ghostTo,
+						to: bounds.end,
 						existing: [],
 						schedules: input.schedules,
 						holidays: input.holidays,

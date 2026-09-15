@@ -91,7 +91,7 @@ It is modelled on [`brianramseyau/ev-charging-log`](https://github.com/brianrams
   - **Re-plan:** a schedule, standard-hours or holiday change that reaches back into the past re-plans the `prefill` rows from that date up to the watermark. `manual` and `import` rows are never touched.
   - **First run:** the watermark starts at the later of the current FY start and the first schedule's `effective_from`. An import commit raises the watermark to its last date, so there's no back-fill of historical gaps.
   - **Finalised FYs** are frozen.
-  - **Future days** aren't stored. The current week shows upcoming scheduled days as uncounted ghost rows. Future leave is stored as `manual`.
+  - **Future days** aren't stored. Every day after today with no row shows what the schedule will make it, as an uncounted ghost row (and a hatched punch-card cell); a future day the schedule doesn't cover reads "Not yet", never "Off". Opening a future day's editor starts from that same preview. Future leave is stored as `manual`.
 - **Today** is the server's local date under `TZ`. Build it from local getters or `Intl.DateTimeFormat(...).formatToParts()`. **Never** use `toISOString().slice(0, 10)`. Loads pass `today` to the client.
 
 ## Data model (`src/lib/server/db/schema.ts`)

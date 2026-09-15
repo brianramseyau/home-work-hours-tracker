@@ -57,6 +57,37 @@ describe('DiaryTable', () => {
 		await expect.element(page.getByText('7.6 h')).toBeInTheDocument();
 	});
 
+	it('reads "Not yet" for a future day with nothing scheduled', async () => {
+		render(DiaryTable, { weeks: weeksFor(), onOpenDay: () => {} });
+		await expect.element(page.getByText('Not yet').first()).toBeInTheDocument();
+	});
+
+	it('mutes a schedule preview row, and only that row', async () => {
+		const days = buildDiaryDays({
+			startYear: 2026,
+			today: '2026-09-14',
+			days: [],
+			schedules: [
+				{
+					effectiveFrom: '2026-07-01',
+					cycleWeeks: 1,
+					anchorMonday: '2026-06-29',
+					days: [{ weekIndex: 0, weekday: 3, mode: 'home', officeId: null }]
+				}
+			],
+			holidays: [],
+			standard: STANDARD,
+			includeWeekends: false
+		});
+		render(DiaryTable, { weeks: groupDiaryDaysByWeek(days), onOpenDay: () => {} });
+		expect(document.getElementById('day-row-2026-09-16')!.className).toContain(
+			'text-muted-foreground'
+		);
+		expect(document.getElementById('day-row-2026-09-15')!.className).not.toContain(
+			'text-muted-foreground'
+		);
+	});
+
 	it('opens the day editor when the type is clicked', async () => {
 		let opened: string | null = null;
 		render(DiaryTable, { weeks: weeksFor(), onOpenDay: (date) => (opened = date) });
